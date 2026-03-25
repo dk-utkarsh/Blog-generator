@@ -14,7 +14,7 @@ export async function generateImages(
 ): Promise<GeneratedImage[]> {
   console.log("[Step 6] Generating images...");
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!apiKey) {
     console.error("[Step 6] No GEMINI_API_KEY — skipping image generation");
     return [];

@@ -18,7 +18,7 @@ export async function getLastBlogWithinHours(hours: number) {
   const result = await db
     .select()
     .from(blogs)
-    .where(sql`${blogs.createdAt} > ${cutoff}`)
+    .where(sql`${blogs.createdAt} > ${cutoff} AND ${blogs.status} != 'failed'`)
     .limit(1);
   return result[0] ?? null;
 }

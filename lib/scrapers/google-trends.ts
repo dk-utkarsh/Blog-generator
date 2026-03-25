@@ -12,7 +12,7 @@ export async function fetchDentalTrends(): Promise<string[]> {
 
   try {
     const queries = [
-      "dental equipment trends India 2026",
+      `dental equipment trends India ${new Date().getFullYear()}`,
       "latest dental products India",
     ];
 

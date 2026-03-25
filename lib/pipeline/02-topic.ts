@@ -57,6 +57,10 @@ export async function generateTopic(research: ResearchData): Promise<TopicData> 
   const cleanJson = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
   const topic = JSON.parse(cleanJson);
 
+  if (!topic.title || !topic.category || !Array.isArray(topic.mainSections) || topic.mainSections.length === 0) {
+    throw new Error(`LLM returned invalid topic structure: missing title, category, or mainSections`);
+  }
+
   const blog = await saveBlog({
     blogNumber: nextBlogNumber,
     title: topic.title,

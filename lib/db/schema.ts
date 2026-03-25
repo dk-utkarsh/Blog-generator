@@ -9,7 +9,7 @@ import {
 
 export const blogs = pgTable("blogs", {
   id: serial("id").primaryKey(),
-  blogNumber: integer("blog_number").notNull(),
+  blogNumber: integer("blog_number").notNull().unique(),
   title: text("title").notNull(),
   subtitle: text("subtitle"),
   category: text("category"),

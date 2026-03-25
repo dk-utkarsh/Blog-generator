@@ -8,6 +8,13 @@
       "when": 1774436907584,
       "tag": "0000_wide_king_bedlam",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774445948309,
+      "tag": "0001_unusual_juggernaut",
+      "breakpoints": true
     }
   ]
 }
