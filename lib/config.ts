@@ -1,0 +1,75 @@
+export const GEMINI_TEXT_MODEL = "gemini-2.5-pro";
+export const GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image-preview";
+
+export const DENTAL_CATEGORIES = [
+  "RVG Sensors",
+  "Autoclaves & Sterilization",
+  "Ultrasonic Scalers",
+  "Apex Locators",
+  "Dental Chairs",
+  "Air Compressors",
+  "Curing Lights",
+  "Dental Handpieces",
+  "Micromotors",
+  "Endodontic Equipment",
+  "Rotary Endodontics",
+  "Intraoral Cameras",
+  "Impression Materials",
+  "Composite Resins",
+  "Extraction Forceps",
+  "Dental X-Ray",
+  "CAD/CAM Systems",
+  "3D Scanners",
+  "Dental Lasers",
+  "Suction Units",
+  "Dental Loupes",
+  "Whitening Equipment",
+];
+
+export const CONTENT_TYPES = [
+  "Buying Guide",
+  "Comparison",
+  "How-To",
+  "Troubleshooting",
+  "ROI Analysis",
+  "Maintenance Guide",
+  "Setup Guide",
+  "Technology Overview",
+];
+
+export const FORBIDDEN_PATTERNS = [
+  "Compressor + Comparison",
+  "Compressor + Noise",
+  "3D Scanner + ROI",
+  "3D Printer + ROI",
+  "CAD/CAM + ROI",
+  "RVG + Wireless vs Wired",
+  "Autoclave + Class B vs N",
+  "Chair + Hydraulic vs Electric",
+];
+
+export const CATEGORY_KEYWORD_MAP: Record<string, string> = {
+  rvg: "rvg sensor",
+  sensor: "rvg sensor",
+  "x-ray": "dental xray",
+  xray: "dental xray",
+  autoclave: "autoclave",
+  steriliz: "autoclave",
+  scaler: "ultrasonic scaler",
+  ultrasonic: "ultrasonic scaler",
+  apex: "apex locator",
+  locator: "apex locator",
+  chair: "dental chair",
+  compressor: "air compressor",
+  curing: "curing light",
+  handpiece: "dental handpiece",
+  micromotor: "micromotor",
+  endo: "endodontic",
+  rotary: "rotary endodontic",
+  intraoral: "intraoral camera",
+  camera: "intraoral camera",
+  impression: "impression material",
+  composite: "composite resin",
+  extraction: "extraction forceps",
+  forceps: "extraction forceps",
+};
