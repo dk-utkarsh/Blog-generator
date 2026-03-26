@@ -24,18 +24,24 @@ export async function generateTopic(research: ResearchData): Promise<TopicData> 
 
   const nextBlogNumber = await getNextBlogNumber();
 
-  const last5 = research.recentBlogs.slice(0, 5);
-  const forbiddenCategories = last5.map((b) => b.category).filter(Boolean) as string[];
+  // Use ALL blogs for forbidden list — no topic should EVER repeat
+  const allBlogs = research.recentBlogs;
+  const last5 = allBlogs.slice(0, 5);
+
+  // ALL categories ever used
+  const allCategories = allBlogs.map((b) => b.category).filter(Boolean) as string[];
+  const forbiddenCategories = [...new Set(last5.map((b) => b.category).filter(Boolean) as string[])];
 
   const categoryCount: Record<string, number> = {};
-  research.recentBlogs.forEach((b) => {
+  allBlogs.forEach((b) => {
     if (b.category) categoryCount[b.category] = (categoryCount[b.category] || 0) + 1;
   });
   const overusedCategories = Object.keys(categoryCount).filter((c) => categoryCount[c] >= 2);
 
-  const lastContentType = research.recentBlogs[0]?.contentType || "";
+  const lastContentType = allBlogs[0]?.contentType || "";
 
-  const recentBlogsList = last5
+  // Send ALL blog titles so AI can avoid ANY repetition
+  const recentBlogsList = allBlogs
     .map((b) => `#${b.blogNumber}: ${b.category} - ${b.contentType} - "${b.title}"`)
     .join("\n");
 

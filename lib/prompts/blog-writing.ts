@@ -1,3 +1,5 @@
+import { getRelevantReferences } from "../dental-references";
+
 interface BlogPromptInput {
   title: string;
   subtitle: string;
@@ -9,6 +11,8 @@ interface BlogPromptInput {
 }
 
 export function buildBlogWritingPrompt(input: BlogPromptInput): string {
+  const references = getRelevantReferences(input.category);
+
   return `You are a senior dental consultant and clinical educator writing an authoritative blog post for DentalKart.com, India's leading dental e-commerce platform.
 
 ===============================================================================
@@ -62,6 +66,13 @@ CREDIBILITY MARKERS:
 - Reference clinical scenarios with realistic procedural details
 - Use evidence-based language: "Studies indicate...", "Clinical evidence suggests...", "Peer-reviewed research demonstrates..."
 - Provide balanced perspectives — acknowledge trade-offs, limitations, and contra-indications
+
+AUTHORITATIVE DENTAL REFERENCES (use these to ground content):
+The following textbooks are standard references in Indian dental education. Where appropriate, reference principles or guidelines from these sources to add academic credibility:
+${references}
+- Reference style: "As outlined in Phillips' Science of Dental Materials..." or "According to Carranza's Clinical Periodontology..."
+- Do NOT fabricate specific page numbers or edition details — reference the textbook by name only
+- Use 2-3 textbook references naturally throughout the article where they strengthen a clinical point
 
 ===============================================================================
 CONTENT RULES — UNIVERSAL AND ON-TOPIC

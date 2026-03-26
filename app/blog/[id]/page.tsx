@@ -99,7 +99,10 @@ export default async function BlogPage({
             <span className="text-xs text-gray-400">HTML output</span>
           </div>
           <iframe
-            srcDoc={blog.htmlContent}
+            srcDoc={blog.htmlContent.replace(
+              "<head>",
+              `<head><base href="${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"}/" />`
+            )}
             className="w-full border-0"
             style={{ minHeight: "800px" }}
             title="Blog preview"
