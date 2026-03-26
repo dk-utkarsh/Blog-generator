@@ -3,7 +3,6 @@ import { google } from "@ai-sdk/google";
 import { GEMINI_TEXT_MODEL } from "../config";
 import { buildBlogWritingPrompt } from "../prompts/blog-writing";
 import type { TopicData } from "./02-topic";
-import type { EnrichedProduct } from "../utils/brand-tiers";
 
 export interface BlogContent {
   markdown: string;
@@ -14,7 +13,6 @@ export interface BlogContent {
 
 export async function writeBlog(
   topic: TopicData,
-  products: EnrichedProduct[],
   seasonalContext: string
 ): Promise<BlogContent> {
   console.log(`[Step 5] Writing blog: "${topic.title}"...`);
@@ -26,8 +24,6 @@ export async function writeBlog(
     searchKeyword: topic.searchKeyword,
     hook: topic.hook,
     mainSections: topic.mainSections,
-    products,
-    seasonalContext,
     currentYear: new Date().getFullYear(),
   });
 

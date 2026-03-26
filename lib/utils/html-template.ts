@@ -5,22 +5,43 @@ export function wrapInHtmlTemplate(
   imageUrls: { url: string; caption: string }[] = []
 ): string {
   let htmlWithImages = content;
+
   if (imageUrls.length > 0) {
-    const sections = htmlWithImages.split(/<h2/gi);
-    if (sections.length > 2) {
-      const interval = Math.floor(sections.length / (imageUrls.length + 1));
-      let imgIndex = 0;
-      for (let i = interval; i < sections.length && imgIndex < imageUrls.length; i += interval) {
+    // Count total heading tags (h2 and h3) to calculate even distribution
+    const totalHeadings = (content.match(/<\/h[23]>/gi) || []).length;
+    const interval =
+      totalHeadings > 0
+        ? Math.max(1, Math.floor(totalHeadings / imageUrls.length))
+        : 1;
+
+    let headingCount = 0;
+    let imgIndex = 0;
+
+    htmlWithImages = content.replace(/<\/h[23]>/gi, (match) => {
+      headingCount++;
+
+      // Insert image after every Nth heading, evenly spaced
+      if (headingCount % interval === 0 && imgIndex < imageUrls.length) {
         const img = imageUrls[imgIndex];
-        const imgHtml = `<figure style="margin: 24px 0; text-align: center;">
-  <img src="${img.url}" alt="${img.caption}" style="max-width: 100%; border-radius: 8px;" />
-  <figcaption style="color: #666; font-size: 14px; margin-top: 8px;">${img.caption}</figcaption>
-</figure>
-`;
-        sections[i] = imgHtml + "<h2" + sections[i];
         imgIndex++;
+        return `${match}
+<figure style="margin: 32px 0; text-align: center;">
+  <img src="${img.url}" alt="${img.caption}" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);" loading="lazy" />
+  <figcaption style="color: #555; font-size: 13px; margin-top: 10px; font-style: italic;">${img.caption}</figcaption>
+</figure>`;
       }
-      htmlWithImages = sections.join("");
+      return match;
+    });
+
+    // Append any remaining images that were not inserted (not enough headings)
+    while (imgIndex < imageUrls.length) {
+      const img = imageUrls[imgIndex];
+      htmlWithImages += `
+<figure style="margin: 32px 0; text-align: center;">
+  <img src="${img.url}" alt="${img.caption}" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);" loading="lazy" />
+  <figcaption style="color: #555; font-size: 13px; margin-top: 10px; font-style: italic;">${img.caption}</figcaption>
+</figure>`;
+      imgIndex++;
     }
   }
 
@@ -51,8 +72,8 @@ export function wrapInHtmlTemplate(
     blockquote { border-left: 4px solid #0066CC; margin-left: 0; padding-left: 16px; color: #555; }
     code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-size: 14px; }
     figure { margin: 24px 0; text-align: center; }
-    figure img { max-width: 100%; border-radius: 8px; }
-    figcaption { color: #666; font-size: 14px; margin-top: 8px; }
+    figure img { max-width: 100%; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+    figcaption { color: #666; font-size: 14px; margin-top: 8px; font-style: italic; }
     .meta-description { color: #666; font-style: italic; margin-bottom: 24px; }
   </style>
 </head>

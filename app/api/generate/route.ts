@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getLastBlogWithinHours, updateBlogStatus } from "@/lib/db/queries";
 import { runResearch } from "@/lib/pipeline/01-research";
 import { generateTopic } from "@/lib/pipeline/02-topic";
-import { scrapeProducts, extractSearchKeyword } from "@/lib/pipeline/03-products";
-import { enrichAndSelectProducts } from "@/lib/pipeline/04-enrich";
 import { writeBlog } from "@/lib/pipeline/05-write-blog";
 import { generateImages } from "@/lib/pipeline/06-images";
 import { finalize } from "@/lib/pipeline/07-finalize";
@@ -16,42 +14,44 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const recentBlog = await getLastBlogWithinHours(12);
-  if (recentBlog) {
-    return NextResponse.json({
-      message: "Blog already generated within last 12 hours",
-      lastBlog: recentBlog.title,
-    });
+  // Cooldown: skip if a blog was generated recently, unless ?force=true
+  const force = request.nextUrl.searchParams.get("force") === "true";
+  if (!force) {
+    const recentBlog = await getLastBlogWithinHours(12);
+    if (recentBlog) {
+      return NextResponse.json({
+        message: "Blog already generated within last 12 hours",
+        lastBlog: recentBlog.title,
+      });
+    }
   }
 
   let blogId: number | null = null;
 
   try {
-    // Step 1: Research
+    // Step 1: Research (PubMed + seasonal context)
     const research = await runResearch();
 
     // Step 2: Topic Generation
     const topic = await generateTopic(research);
     blogId = topic.blogId;
 
-    // Step 3: Product Scraping
-    const searchKeyword = extractSearchKeyword(topic.title, topic.searchKeyword);
-    const rawProducts = await scrapeProducts(searchKeyword);
+    // Step 3: Blog Writing (universal content, no product references)
+    const blogContent = await writeBlog(topic, research.seasonalContext);
 
-    // Step 4: Product Enrichment
-    const products = enrichAndSelectProducts(rawProducts, searchKeyword);
+    // Step 4: Image Generation (AI-planned infographics)
+    const images = await generateImages(
+      topic.title,
+      topic.mainSections,
+      topic.category,
+      blogContent.markdown
+    );
 
-    // Step 5: Blog Writing
-    const blogContent = await writeBlog(topic, products, research.seasonalContext);
-
-    // Step 6: Image Generation
-    const images = await generateImages(topic.title, topic.mainSections, topic.category);
-
-    // Step 7: Finalize
+    // Step 5: Finalize (save to database)
     const result = await finalize({
       blogContent,
       topic,
-      products,
+      products: [],
       images,
       research,
     });
@@ -62,7 +62,6 @@ export async function GET(request: NextRequest) {
       title: result.title,
       wordCount: blogContent.wordCount,
       imagesGenerated: images.length,
-      productsIncluded: products.length,
     });
   } catch (error) {
     console.error("Blog generation failed:", error);

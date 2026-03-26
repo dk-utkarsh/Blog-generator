@@ -1,5 +1,5 @@
 export const GEMINI_TEXT_MODEL = "gemini-2.5-pro";
-export const GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image-preview";
+export const GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image";
 
 export const DENTAL_CATEGORIES = [
   "RVG Sensors",

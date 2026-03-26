@@ -1,5 +1,3 @@
-import type { EnrichedProduct } from "../utils/brand-tiers";
-
 interface BlogPromptInput {
   title: string;
   subtitle: string;
@@ -7,29 +5,11 @@ interface BlogPromptInput {
   searchKeyword: string;
   hook: string;
   mainSections: string[];
-  products: EnrichedProduct[];
-  seasonalContext: string;
   currentYear: number;
 }
 
 export function buildBlogWritingPrompt(input: BlogPromptInput): string {
-  const productsText = input.products
-    .map(
-      (p, i) =>
-        `${i + 1}. **${p.name}** (${p.positioning})
-   - URL: ${p.url}
-   - Feature: ${p.keyFeature}
-   - Link format: [${p.name}](${p.url})`
-    )
-    .join("\n\n");
-
-  const noProductsNote = input.products.length === 0
-    ? "\n\nNOTE: No specific products are available for this topic. Write the blog as a general guide WITHOUT product links. Focus on educational value and practical advice.\n"
-    : "";
-
-  return `You are an expert dental content writer creating a blog post for DentalKart.com, India's leading online dental marketplace.
-
-Your #1 PRIORITY: Write like a REAL HUMAN dental professional, NOT an AI. Google's algorithms detect AI-generated content. This content must pass AI detection tools and sound genuinely human-written.
+  return `You are a senior dental consultant and clinical educator writing an authoritative blog post for DentalKart.com, India's leading dental e-commerce platform.
 
 ===============================================================================
 BLOG ASSIGNMENT
@@ -39,162 +19,106 @@ BLOG ASSIGNMENT
 **Subtitle:** ${input.subtitle}
 **Category:** ${input.category}
 **Target Keyword:** ${input.searchKeyword}
-**Current Season:** ${input.seasonalContext}
 
-**Opening Hook (Use this to start):**
+**Opening Hook:**
 ${input.hook}
 
 **Main Sections to Cover:**
 ${input.mainSections.map((section, i) => `${i + 1}. ${section}`).join("\n")}
-${noProductsNote}
-===============================================================================
-CRITICAL: WRITE LIKE A HUMAN, NOT AN AI
-===============================================================================
-
-## HUMAN WRITING CHARACTERISTICS (NON-NEGOTIABLE)
-
-### 1. NATURAL IMPERFECTIONS & CONVERSATIONAL STYLE
-
-START sentences with: "And", "But", "So", "Now", "Plus", "Or"
-  Example: "But here's the thing about apex locators..."
-  Example: "And that's not even considering the maintenance costs."
-
-USE FRAGMENTS occasionally:
-  Example: "Simple as that." "Not quite." "Here's the thing." "Mind you."
-
-ADD FILLER WORDS naturally:
-  - "quite frankly", "to be honest", "mind you", "by the way"
-  - "having said that", "to be fair", "actually", "in fact"
-  Example: "Now, quite frankly, most dentists I've spoken with don't realize..."
-
-PERSONAL INTERJECTIONS:
-  - "Look,", "Listen,", "Here's what I mean:", "Let me explain:"
-  Example: "Look, I've seen clinics in Mumbai spend 5L on equipment they barely use."
-
-CONTRACTIONS EVERYWHERE (80%+ of sentences):
-  - Use: you're, it's, don't, here's, that's, won't, can't, shouldn't
-  - NOT: you are, it is, do not, here is, that is, will not
-  Example: "You're probably wondering if it's worth the investment—and honestly, it depends."
-
-### 2. SENTENCE RHYTHM VARIATION (CRITICAL)
-
-Mix these aggressively in EVERY section:
-
-SHORT sentences (3-8 words): "Simple as that." "Results vary." "Worth checking out."
-MEDIUM sentences (12-18 words): "The Vatech sensor offers better resolution, but it comes at a premium price point."
-LONG sentences (25-40 words): "I remember talking to Dr. Mehta from Jaipur last year, and she mentioned that switching to a Class B autoclave cut her instrument turnaround time by almost 40%—which, for a busy practice, is massive."
-
-NEVER use the same sentence structure twice in a row
-
-### 3. INDIAN CONTEXT & COLLOQUIALISMS (MANDATORY)
-
-Indian English phrases:
-  - "quite frankly", "mind you", "to be fair", "having said that"
-  - "by and large", "at the end of the day", "that said"
-
-Reference Indian locations specifically:
-  - "I've seen clinics in Bangalore/Pune/Delhi/Mumbai/Tier 2 cities..."
-  - "Practices in coastal areas like Kerala or Goa face humidity issues..."
-
-Use INR for all prices (never $ or Rs.):
-  Example: "The mid-range option costs around 1.2L"
-
-Mention Indian market realities:
-  - "Given India's voltage fluctuations..."
-  - "In humid monsoon climates..."
-  - "Post-Diwali equipment purchases..."
-  - "Many Tier 2 city practices..."
-
-### 4. PERSONAL & SPECIFIC EXAMPLES (REQUIRED)
-
-Include 3-5 specific examples with:
-  - Names: "Dr. Sharma", "Dr. Priya", "Dr. Mehta"
-  - Locations: "a clinic in Pune", "practices in Bangalore"
-  - Numbers: "saved 50,000 annually", "cut failures by 80%", "ROI in 9 months"
-
-Example: "Take Dr. Priya's clinic in Bangalore. She switched to a wireless RVG last year and told me it cut her patient turnaround time by 15 minutes per case. Over a month, that's massive."
-
-### 5. RHETORICAL QUESTIONS & ENGAGEMENT
-
-Ask questions to readers:
-  - "But here's the million-dollar question—"
-  - "Why does this matter?"
-  - "What's the catch?"
-  - "Sound familiar?"
-
-Use second person extensively: "you", "your", "you're"
-
-### 6. EMOTIONAL & OPINIONATED (Show personality!)
-
-Express feelings:
-  - "This frustrates me", "I'm genuinely impressed", "Honestly, it's disappointing"
-  - "Let me be blunt:", "Here's the harsh truth:"
-
-Make bold statements:
-  - "This is, hands down, the best option for..."
-  - "Nothing comes close to..."
-  - "You won't find better value than..."
-
-### 7. HEDGING & NUANCE (Humans aren't certain about everything)
-
-Use qualifying phrases:
-  - "In most cases,", "Generally speaking,", "Typically,", "Often,"
-  - "From what I've seen,", "In my experience,", "Tends to,"
 
 ===============================================================================
-STRUCTURE & LENGTH
+WRITING STYLE — FORMAL AND PROFESSIONAL
 ===============================================================================
 
-- STRICT LIMIT: 1000-1500 words TOTAL
-- 70% BULLETS / 30% paragraphs
-- Paragraphs: 2-3 sentences MAXIMUM
+TONE: Authoritative, knowledgeable, clinical — written as a senior dental consultant addressing professional peers.
 
-MANDATORY SECTIONS (In this order):
-1. Table of Contents (linked)
-2. Introduction with hook (150-200 words)
-3. Main Content Sections (${input.mainSections.length} sections, bullet-heavy)
-4. FAQ Section (5-7 questions)
-5. Conclusion with bullet summary (100-150 words)
+LANGUAGE RULES:
+- Use formal, professional English throughout the entire article
+- Write in third person or second person professional ("practitioners should consider..." or "as a clinician, one may find...")
+- FORBIDDEN casual phrases — do NOT use any of these: "quite frankly", "to be honest", "mind you", "look", "listen", "here's the thing", "honestly", "let's dive in", "game-changer", "no-brainer", "at the end of the day"
+- NO slang, colloquialisms, or informal register
+- NO sentence fragments such as "Simple as that" or "Not quite"
+- NO filler words: never use "actually", "basically", "literally", "just"
+- NO exclamation marks anywhere in the article
+- NO references to financial year-end, tax savings, investment deadlines, seasonal purchasing, or festive offers
+- Use precise dental and medical terminology where appropriate
+- Maintain a consultative, educational tone from beginning to end
+
+SENTENCE STRUCTURE:
+- Clear, well-constructed sentences with proper grammar
+- Mix of medium-length sentences (15-20 words) and longer analytical sentences (25-35 words)
+- Use formal transitional phrases: "Furthermore", "In addition", "Consequently", "It is worth noting that", "Of particular importance", "From a clinical perspective"
+- Paragraphs: 3-4 sentences each, logically structured with clear topic sentences
+
+INDIAN DENTAL MARKET CONTEXT:
+- Reference Indian dental practice conditions where relevant (voltage fluctuations, ambient humidity, high patient throughput)
+- Use Indian Rupee (₹) for all pricing examples and cost references
+- Reference Indian cities and practice types (metropolitan multi-chair clinics, Tier 2 city solo practices, rural dental camps)
+- Cite realistic Indian market data, regulatory standards (DCI guidelines), and practice scenarios
+- Reference equipment availability and service network considerations in India
+
+CREDIBILITY MARKERS:
+- Include specific data points with clinical context (percentages, measurements, cost ranges in ₹)
+- Reference clinical scenarios with realistic procedural details
+- Use evidence-based language: "Studies indicate...", "Clinical evidence suggests...", "Peer-reviewed research demonstrates..."
+- Provide balanced perspectives — acknowledge trade-offs, limitations, and contra-indications
 
 ===============================================================================
-PRODUCTS TO INTEGRATE (${input.products.length} products)
+CONTENT RULES — UNIVERSAL AND ON-TOPIC
 ===============================================================================
 
-${input.products.length > 0 ? productsText : "No products available — write a general guide."}
+CRITICAL: The blog topic is "${input.category}" specifically about "${input.title}".
+- Write ONLY about this specific topic — do not deviate to unrelated dental subjects
+- Every section must remain focused on ${input.category}
+- Do NOT introduce unrelated equipment, procedures, or specialties
+- Content must be UNIVERSAL — applicable to all brands and models, not specific to any single manufacturer
+- Do NOT mention specific product names, brand names, or DentalKart product links within the body
+- Do NOT include product recommendation tables or branded product comparisons
+- Focus exclusively on: clinical technique, selection criteria, maintenance protocols, troubleshooting, best practices
+- This must serve as a standalone educational resource for any dental practitioner in India
 
-${input.products.length > 0 ? `Product Integration Rules:
-- Mention EACH product at least ONCE in relevant sections
-- Format as: [Product Name](URL) - clickable hyperlink
-- Natural mentions, not forced: "The [Woodpecker UDS-P Scaler](URL) handles this well"
-- Distribute across sections (don't cluster all products in one section)
-- Include positioning context: "For budget setups...", "If you're investing in premium..."` : ""}
+===============================================================================
+STRUCTURE AND LENGTH
+===============================================================================
+
+- STRICT WORD LIMIT: 1000-1500 words TOTAL (count carefully)
+- FORMAT RATIO: 60% bulleted/numbered lists, 40% well-structured paragraphs
+- Every section must contain substantive clinical content — no filler
+
+MANDATORY SECTIONS (in this exact order):
+1. Table of Contents (with anchor links to each section)
+2. Introduction (150-200 words) — establish the clinical importance and relevance of this topic for Indian dental practitioners
+3. Main Content — ${input.mainSections.length} sections as specified above, each with a clear H2 heading
+4. Frequently Asked Questions (5-7 clinically relevant questions with evidence-based answers)
+5. Conclusion (100-150 words) — summarise key clinical insights with bulleted takeaways
 
 ===============================================================================
 FAQ SECTION (5-7 Questions)
 ===============================================================================
 
-- Questions sound like real dentists asking
-- Answers use contractions, natural language
-- Include product mentions where relevant
-- Show personality: "Honestly, yes—but with a caveat..."
+- Questions must reflect genuine clinical queries from practising dentists
+- Answers must be precise, evidence-based, and actionable
+- Use formal professional language in both questions and answers
+- Each answer: 2-4 sentences containing specific, clinically useful information
+- Include at least one question addressing Indian market or practice conditions
 
 ===============================================================================
 CONCLUSION
 ===============================================================================
 
-- One conversational summary sentence
-- Bulleted key takeaways (4 items)
-- Next steps (2 items)
-- End with: Browse DentalKart's complete range of ${input.searchKeyword} at [www.dentalkart.com](https://www.dentalkart.com)
+- Summarise the key clinical insights from the article
+- Include 4-5 bulleted key takeaways
+- Provide a professional closing statement that reinforces the educational value of the article
+- End with exactly this line: For a comprehensive range of ${input.searchKeyword} and expert guidance, visit [www.dentalkart.com](https://www.dentalkart.com)
 
 ===============================================================================
-SEO CHECKLIST
+SEO REQUIREMENTS
 ===============================================================================
 
-- Target keyword "${input.searchKeyword}" used 5-7 times naturally
-- Keyword in: title, first paragraph, 2-3 H2 headings, conclusion
-- Meta description: 150-160 chars with keyword
-- All product URLs hyperlinked correctly
+- Target keyword "${input.searchKeyword}" used 5-7 times naturally throughout the article
+- Keyword placement: title (H1), first paragraph, 2-3 H2 headings, conclusion
+- Meta description: 150-160 characters incorporating the target keyword
+- Use related LSI keywords from: ${input.mainSections.join(", ")}
 
-OUTPUT: Complete blog post in Markdown format. Start with the title as # heading, then Meta Description, then the full blog.`;
+OUTPUT: Complete blog post in Markdown format. Begin with # title, followed by **Meta Description:** on the next line, then the full article content.`;
 }
