@@ -18,12 +18,6 @@ export const blogs = pgTable("blogs", {
   searchKeyword: text("search_keyword"),
   markdownContent: text("markdown_content"),
   htmlContent: text("html_content"),
-  images: jsonb("images").$type<
-    { url: string; caption: string; prompt: string }[]
-  >(),
-  productsUsed: jsonb("products_used").$type<
-    { name: string; url: string; brand: string; positioning: string }[]
-  >(),
   wordCount: integer("word_count"),
   status: text("status").notNull().default("generated"),
   errorMessage: text("error_message"),

@@ -3,9 +3,10 @@ import { google } from "@ai-sdk/google";
 import { GEMINI_TEXT_MODEL } from "../config";
 import { buildBlogWritingPrompt } from "../prompts/blog-writing";
 import type { TopicData } from "./02-topic";
+import type { BlogJSON } from "../utils/html-template";
 
 export interface BlogContent {
-  markdown: string;
+  blogJson: BlogJSON;
   blogTitle: string;
   blogSubtitle: string;
   wordCount: number;
@@ -15,7 +16,7 @@ export async function writeBlog(
   topic: TopicData,
   seasonalContext: string
 ): Promise<BlogContent> {
-  console.log(`[Step 5] Writing blog: "${topic.title}"...`);
+  console.log(`[Step 3] Writing blog: "${topic.title}"...`);
 
   const prompt = buildBlogWritingPrompt({
     title: topic.title,
@@ -32,17 +33,26 @@ export async function writeBlog(
     prompt,
   });
 
-  const markdown = text.trim();
+  // Parse JSON — strip markdown fences if LLM adds them despite instructions
+  const cleanJson = text
+    .replace(/```json\n?/g, "")
+    .replace(/```\n?/g, "")
+    .trim();
 
-  const titleMatch = markdown.match(/^#\s+(.*)/m);
-  const blogTitle = titleMatch ? titleMatch[1].trim() : topic.title;
+  const blogJson: BlogJSON = JSON.parse(cleanJson);
 
-  const metaMatch = markdown.match(/\*\*Meta Description:\*\*\s*(.*)/i);
-  const blogSubtitle = metaMatch ? metaMatch[1].trim() : topic.subtitle;
+  // Calculate word count from text content only
+  const textParts = [
+    blogJson.hero.description,
+    ...blogJson.sections.map((s) => s.content),
+    ...blogJson.faq.map((f) => `${f.question} ${f.answer}`),
+  ];
+  const wordCount = textParts.join(" ").split(/\s+/).length;
 
-  const wordCount = markdown.split(/\s+/).length;
+  const blogTitle = `${blogJson.hero.title} — ${blogJson.hero.subtitle}`;
+  const blogSubtitle = topic.subtitle;
 
-  console.log(`[Step 5] Blog written: ${wordCount} words`);
+  console.log(`[Step 3] Blog written: ${wordCount} words, ${blogJson.sections.length} sections`);
 
-  return { markdown, blogTitle, blogSubtitle, wordCount };
+  return { blogJson, blogTitle, blogSubtitle, wordCount };
 }

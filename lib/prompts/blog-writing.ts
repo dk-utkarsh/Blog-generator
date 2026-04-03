@@ -1,4 +1,4 @@
-import { getRelevantReferences } from "../dental-references";
+import { getProductLinksForTopic } from "../config";
 
 interface BlogPromptInput {
   title: string;
@@ -11,125 +11,235 @@ interface BlogPromptInput {
 }
 
 export function buildBlogWritingPrompt(input: BlogPromptInput): string {
-  const references = getRelevantReferences(input.category);
+  const productLinks = getProductLinksForTopic(input.title, input.category, input.searchKeyword);
 
-  return `You are a senior dental consultant and clinical educator writing an authoritative blog post for DentalKart.com, India's leading dental e-commerce platform.
+  return `You are a dental content writer for DentalKart.com. Your output must be a single raw JSON object — no markdown, no code fences, no extra text.
 
 ===============================================================================
 BLOG ASSIGNMENT
 ===============================================================================
 
-**Title:** ${input.title}
-**Subtitle:** ${input.subtitle}
-**Category:** ${input.category}
-**Target Keyword:** ${input.searchKeyword}
+Title: ${input.title}
+Subtitle: ${input.subtitle}
+Category: ${input.category}
+Target Keyword: ${input.searchKeyword}
+Hook: ${input.hook}
+Year: ${input.currentYear}
 
-**Opening Hook:**
-${input.hook}
-
-**Main Sections to Cover:**
+Sections to cover (you must produce exactly ${input.mainSections.length} section objects):
 ${input.mainSections.map((section, i) => `${i + 1}. ${section}`).join("\n")}
 
 ===============================================================================
-WRITING STYLE — FORMAL AND PROFESSIONAL
+APPROVED PRODUCT LINKS — USE ONLY THESE EXACT URLs
 ===============================================================================
 
-TONE: Authoritative, knowledgeable, clinical — written as a senior dental consultant addressing professional peers.
+${productLinks}
 
-LANGUAGE RULES:
-- Use formal, professional English throughout the entire article
-- Write in third person or second person professional ("practitioners should consider..." or "as a clinician, one may find...")
-- FORBIDDEN casual phrases — do NOT use any of these: "quite frankly", "to be honest", "mind you", "look", "listen", "here's the thing", "honestly", "let's dive in", "game-changer", "no-brainer", "at the end of the day"
-- NO slang, colloquialisms, or informal register
-- NO sentence fragments such as "Simple as that" or "Not quite"
-- NO filler words: never use "actually", "basically", "literally", "just"
-- NO exclamation marks anywhere in the article
-- NO references to financial year-end, tax savings, investment deadlines, seasonal purchasing, or festive offers
-- Use precise dental and medical terminology where appropriate
-- Maintain a consultative, educational tone from beginning to end
-
-SENTENCE STRUCTURE:
-- Clear, well-constructed sentences with proper grammar
-- Mix of medium-length sentences (15-20 words) and longer analytical sentences (25-35 words)
-- Use formal transitional phrases: "Furthermore", "In addition", "Consequently", "It is worth noting that", "Of particular importance", "From a clinical perspective"
-- Paragraphs: 3-4 sentences each, logically structured with clear topic sentences
-
-INDIAN DENTAL MARKET CONTEXT:
-- Reference Indian dental practice conditions where relevant (voltage fluctuations, ambient humidity, high patient throughput)
-- Use Indian Rupee (₹) for all pricing examples and cost references
-- Reference Indian cities and practice types (metropolitan multi-chair clinics, Tier 2 city solo practices, rural dental camps)
-- Cite realistic Indian market data, regulatory standards (DCI guidelines), and practice scenarios
-- Reference equipment availability and service network considerations in India
-
-CREDIBILITY MARKERS:
-- Include specific data points with clinical context (percentages, measurements, cost ranges in ₹)
-- Reference clinical scenarios with realistic procedural details
-- Use evidence-based language: "Studies indicate...", "Clinical evidence suggests...", "Peer-reviewed research demonstrates..."
-- Provide balanced perspectives — acknowledge trade-offs, limitations, and contra-indications
-
-AUTHORITATIVE DENTAL REFERENCES (use these to ground content):
-The following textbooks are standard references in Indian dental education. Where appropriate, reference principles or guidelines from these sources to add academic credibility:
-${references}
-- Reference style: "As outlined in Phillips' Science of Dental Materials..." or "According to Carranza's Clinical Periodontology..."
-- Do NOT fabricate specific page numbers or edition details — reference the textbook by name only
-- Use 2-3 textbook references naturally throughout the article where they strengthen a clinical point
+CRITICAL: Never invent or modify a dentalkart.com URL. Every <a href="..."> in section content and every product card "url" field must be an exact URL from the list above. If a product is not in the list, mention it as plain text without a link.
 
 ===============================================================================
-CONTENT RULES — UNIVERSAL AND ON-TOPIC
+OUTPUT FORMAT
 ===============================================================================
 
-CRITICAL: The blog topic is "${input.category}" specifically about "${input.title}".
-- Write ONLY about this specific topic — do not deviate to unrelated dental subjects
-- Every section must remain focused on ${input.category}
-- Do NOT introduce unrelated equipment, procedures, or specialties
-- Content must be UNIVERSAL — applicable to all brands and models, not specific to any single manufacturer
-- Do NOT mention specific product names, brand names, or DentalKart product links within the body
-- Do NOT include product recommendation tables or branded product comparisons
-- Focus exclusively on: clinical technique, selection criteria, maintenance protocols, troubleshooting, best practices
-- This must serve as a standalone educational resource for any dental practitioner in India
+Return ONE raw JSON object that exactly matches this structure (no extra keys, no missing keys):
+
+{
+  "hero": {
+    "badge": "short badge label, e.g. 'Complete Guide ${input.currentYear}'",
+    "title": "${input.title}",
+    "subtitle": "${input.subtitle}",
+    "description": "~30 words summarising the blog value",
+    "stats": [
+      { "num": "e.g. 95%", "label": "e.g. Success Rate" },
+      { "num": "e.g. ₹800", "label": "e.g. Starting Price" },
+      { "num": "e.g. 10+", "label": "e.g. Products Reviewed" }
+    ]
+  },
+  "sections": [ /* exactly ${input.mainSections.length} section objects — see SECTION RULES */ ],
+  "faq": [ /* 4-5 objects — see FAQ RULES */ ],
+  "cta": {
+    "title": "short CTA heading",
+    "description": "1-2 sentence CTA body",
+    "buttonText": "e.g. Shop Now",
+    "url": "https://www.dentalkart.com/search?query=${encodeURIComponent(input.searchKeyword)}"
+  }
+}
 
 ===============================================================================
-STRUCTURE AND LENGTH
+SECTION RULES
 ===============================================================================
 
-- STRICT WORD LIMIT: 1000-1500 words TOTAL (count carefully)
-- FORMAT RATIO: 60% bulleted/numbered lists, 40% well-structured paragraphs
-- Every section must contain substantive clinical content — no filler
+Each section object:
+{
+  "id": "kebab-case-slug-matching-section-title",
+  "title": "MAX 5 WORDS",
+  "content": "100-150 words of prose. Embed 1-2 <a href='EXACT_URL_FROM_APPROVED_LIST'>anchor text</a> links naturally. Include specific numbers (costs in ₹, percentages, measurements) in every section.",
+  "components": [ /* 0-2 component objects chosen from the 11 types below */ ]
+}
 
-MANDATORY SECTIONS (in this exact order):
-1. Table of Contents (with anchor links to each section)
-2. Introduction (150-200 words) — establish the clinical importance and relevance of this topic for Indian dental practitioners
-3. Main Content — ${input.mainSections.length} sections as specified above, each with a clear H2 heading
-4. Frequently Asked Questions (5-7 clinically relevant questions with evidence-based answers)
-5. Conclusion (100-150 words) — summarise key clinical insights with bulleted takeaways
-
-===============================================================================
-FAQ SECTION (5-7 Questions)
-===============================================================================
-
-- Questions must reflect genuine clinical queries from practising dentists
-- Answers must be precise, evidence-based, and actionable
-- Use formal professional language in both questions and answers
-- Each answer: 2-4 sentences containing specific, clinically useful information
-- Include at least one question addressing Indian market or practice conditions
+- Produce exactly ${input.mainSections.length} sections, one for each assigned section topic.
+- Section titles must be MAX 5 words.
+- Distribute 4-6 component types across the entire blog (not every section needs a component).
+- 8-10 total <a> product links across all section content fields combined.
 
 ===============================================================================
-CONCLUSION
+COMPONENT CATALOGUE — ALL 11 TYPES
 ===============================================================================
 
-- Summarise the key clinical insights from the article
-- Include 4-5 bulleted key takeaways
-- Provide a professional closing statement that reinforces the educational value of the article
-- End with exactly this line: For a comprehensive range of ${input.searchKeyword} and expert guidance, visit [www.dentalkart.com](https://www.dentalkart.com)
+Pick 4-6 types total across the blog. Use each type's exact "type" string.
+
+1. info-cards
+{
+  "type": "info-cards",
+  "cards": [
+    { "icon": "single emoji", "title": "short title", "subtitle": "short subtitle", "description": "1-2 sentence detail" }
+  ]
+}
+
+2. pros-cons
+{
+  "type": "pros-cons",
+  "optionA": {
+    "title": "Option A name",
+    "icon": "single emoji",
+    "items": ["pro/con point", "..."],
+    "watchOut": "optional caution note"
+  },
+  "optionB": {
+    "title": "Option B name",
+    "icon": "single emoji",
+    "items": ["pro/con point", "..."],
+    "watchOut": "optional caution note"
+  }
+}
+
+3. comparison-table
+{
+  "type": "comparison-table",
+  "headers": ["Feature", "Option A", "Option B"],
+  "rows": [
+    ["Row label", "plain string value", { "text": "Best value", "badge": "best" }]
+  ],
+  "footnote": "optional footnote string"
+}
+Note: each cell can be either a plain string OR an object { "text": "label", "badge": "best" | "value" | "premium" }.
+
+4. product-cards
+{
+  "type": "product-cards",
+  "products": [
+    {
+      "tag": "Best Seller",
+      "tagColor": "bestseller",
+      "name": "Product Name",
+      "brand": "Brand Name",
+      "mrp": "₹1,200",
+      "price": "₹950",
+      "discount": "20% off",
+      "rating": 4.5,
+      "ratingText": "4.5/5",
+      "features": ["feature 1", "feature 2", "feature 3"],
+      "specs": [
+        { "label": "Size", "value": "10 ml" }
+      ],
+      "bestFor": "short use-case",
+      "url": "EXACT_URL_FROM_APPROVED_LIST"
+    }
+  ]
+}
+Note: tagColor must be one of: "bestseller" | "premium" | "budget" | "editors" | "advanced".
+Note: specs is optional. url must be an exact URL from the approved list above.
+
+5. checklist
+{
+  "type": "checklist",
+  "title": "Checklist Title",
+  "items": [
+    { "text": "checklist item", "detail": "1-sentence explanation" }
+  ]
+}
+
+6. decision-matrix
+{
+  "type": "decision-matrix",
+  "title": "Decision Matrix Title",
+  "rows": [
+    { "if": "condition/scenario", "then": "recommended action or product" }
+  ]
+}
+
+7. tip-box
+{
+  "type": "tip-box",
+  "title": "Tip Title",
+  "content": "Tip body — practical advice with a specific number or measurement."
+}
+
+8. warning-box
+{
+  "type": "warning-box",
+  "title": "Warning Title",
+  "content": "Warning body — what to avoid and why, with a specific consequence."
+}
+
+9. timeline
+{
+  "type": "timeline",
+  "items": [
+    { "title": "Step or phase title", "description": "1-2 sentence detail" }
+  ]
+}
+
+10. step-cards
+{
+  "type": "step-cards",
+  "cards": [
+    { "title": "Step title", "description": "1-2 sentence instruction with a specific number." }
+  ]
+}
+
+11. feature-bars
+{
+  "type": "feature-bars",
+  "title": "Feature Bars Title",
+  "bars": [
+    { "label": "feature name", "value": 8, "color": "#4f46e5" }
+  ]
+}
+Note: "value" is an integer 1-10. "color" is a hex color string.
 
 ===============================================================================
-SEO REQUIREMENTS
+FAQ RULES
 ===============================================================================
 
-- Target keyword "${input.searchKeyword}" used 5-7 times naturally throughout the article
-- Keyword placement: title (H1), first paragraph, 2-3 H2 headings, conclusion
-- Meta description: 150-160 characters incorporating the target keyword
-- Use related LSI keywords from: ${input.mainSections.join(", ")}
+Produce 4-5 FAQ objects:
+{ "question": "full question string?", "answer": "30-40 word answer with at least one specific number." }
 
-OUTPUT: Complete blog post in Markdown format. Begin with # title, followed by **Meta Description:** on the next line, then the full article content.`;
+===============================================================================
+WRITING RULES
+===============================================================================
+
+WORD LIMIT: 900-1200 words of text content total (hero description + all section content + faq answers combined).
+
+TONE: Simple and professional. A BDS student should understand everything. No jargon without explanation.
+
+SEO: Use the keyword "${input.searchKeyword}" naturally 4-6 times across hero description, section content, and FAQ answers.
+
+NUMBERS: Every section content must include at least one specific number — price in ₹, percentage, measurement, or duration.
+
+LINKS: Embed 8-10 <a href="EXACT_URL"> tags across section content. Use approved URLs only. Repeat a URL if genuinely relevant in multiple sections.
+
+PRODUCT CARDS URLs: Must be an exact URL from the approved list.
+
+SECTION TITLES: MAX 5 words each.
+
+FAQ COUNT: 4-5 items.
+
+COMPONENT COUNT: Pick 4-6 distinct component types total across the blog.
+
+===============================================================================
+FINAL INSTRUCTION
+===============================================================================
+
+Output ONLY the raw JSON object. Do not wrap it in markdown code fences. Do not add any text before or after the JSON.`;
 }
