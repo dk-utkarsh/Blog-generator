@@ -46,8 +46,8 @@ Return ONE raw JSON object that exactly matches this structure (no extra keys, n
 {
   "hero": {
     "badge": "short badge label, e.g. 'Complete Guide ${input.currentYear}'",
-    "title": "${input.title}",
-    "subtitle": "${input.subtitle}",
+    "title": "Short main heading (MAX 6 WORDS, e.g. 'Dental Loupes Buying Guide')",
+    "subtitle": "Short second line (MAX 5 WORDS, e.g. 'Everything You Need to Know')",
     "description": "~30 words summarising the blog value",
     "stats": [
       { "num": "e.g. 95%", "label": "e.g. Success Rate" },

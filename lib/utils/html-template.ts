@@ -1396,6 +1396,18 @@ export function renderBlogHTML(blog: BlogJSON, metaDescription: string): string 
     )
     .join("");
 
+  // Randomize blog theme — one color used everywhere
+  const themes = [
+    { primary: "#0066CC", dark: "#004494", gradient: "linear-gradient(135deg, #0066CC 0%, #004494 50%, #1a1a2e 100%)", light: "#e8f4ff", lightBorder: "#b3d4fc" },
+    { primary: "#00A86B", dark: "#006B45", gradient: "linear-gradient(135deg, #00A86B 0%, #006B45 50%, #1a2e1a 100%)", light: "#e8f5e9", lightBorder: "#a5d6a7" },
+    { primary: "#7B1FA2", dark: "#4A148C", gradient: "linear-gradient(135deg, #7B1FA2 0%, #4A148C 50%, #1a1a2e 100%)", light: "#f3e5f5", lightBorder: "#ce93d8" },
+    { primary: "#C62828", dark: "#8E0000", gradient: "linear-gradient(135deg, #C62828 0%, #8E0000 50%, #2e1a1a 100%)", light: "#ffebee", lightBorder: "#ef9a9a" },
+    { primary: "#E65100", dark: "#BF360C", gradient: "linear-gradient(135deg, #E65100 0%, #BF360C 50%, #2e1f1a 100%)", light: "#fff3e0", lightBorder: "#ffcc80" },
+    { primary: "#00838F", dark: "#004D40", gradient: "linear-gradient(135deg, #00838F 0%, #004D40 50%, #1a2e2e 100%)", light: "#e0f7fa", lightBorder: "#80deea" },
+    { primary: "#283593", dark: "#1A237E", gradient: "linear-gradient(135deg, #283593 0%, #1A237E 50%, #0D1B3E 100%)", light: "#e8eaf6", lightBorder: "#9fa8da" },
+  ];
+  const theme = themes[Math.floor(Math.random() * themes.length)];
+
   const heroHtml = `
     <div class="hero">
       <div class="hero-badge">${escapeHtml(blog.hero.badge)}</div>
@@ -1502,7 +1514,27 @@ export function renderBlogHTML(blog: BlogJSON, metaDescription: string): string 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>${CSS_STYLES}</style>
+  <style>${CSS_STYLES}
+  /* Theme override */
+  :root {
+    --dk-blue: ${theme.primary};
+    --dk-dark: ${theme.dark};
+  }
+  .hero { background: ${theme.gradient}; }
+  .cta-banner { background: ${theme.gradient}; }
+  .toc a { color: ${theme.primary}; }
+  .section h2 { border-bottom-color: ${theme.primary}; }
+  .checklist { background: linear-gradient(135deg, ${theme.light}, white); border-color: ${theme.lightBorder}; }
+  .checklist h3 { color: ${theme.primary}; }
+  .check-icon { background: ${theme.primary}; }
+  .timeline::before { background: linear-gradient(to bottom, ${theme.primary}, ${theme.dark}); }
+  .timeline-item { border-left-color: ${theme.primary}; }
+  .timeline-item::before { background: ${theme.primary}; box-shadow: 0 0 0 3px ${theme.primary}; }
+  .timeline-item h4 { color: ${theme.primary}; }
+  .comparison-table thead { background: ${theme.dark}; }
+  .step-num { background: ${theme.primary}; }
+  .blog-footer { background: ${theme.dark}; }
+  </style>
 </head>
 <body>
 ${heroHtml}
