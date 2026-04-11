@@ -1558,6 +1558,7 @@ const CSS_STYLES = `
     border-bottom: none;
     display: block;
   }
+  /* FAQ — pure CSS toggle (no JavaScript needed) */
   .faq-item {
     margin-bottom: 12px;
     border: 1.5px solid var(--dk-border);
@@ -1570,6 +1571,9 @@ const CSS_STYLES = `
     border-color: var(--dk-blue);
     transform: translateY(-2px);
   }
+  .faq-toggle {
+    display: none;
+  }
   .faq-question {
     font-size: 16px;
     font-weight: 700;
@@ -1581,6 +1585,8 @@ const CSS_STYLES = `
     justify-content: space-between;
     align-items: center;
     transition: background 0.2s;
+    user-select: none;
+    -webkit-user-select: none;
   }
   .faq-question:hover {
     background: var(--dk-light);
@@ -1594,7 +1600,7 @@ const CSS_STYLES = `
     text-align: center;
     transition: transform 0.3s;
   }
-  .faq-item.open .faq-question::after {
+  .faq-toggle:checked + .faq-question::after {
     content: "\\2212";
   }
   .faq-answer {
@@ -1603,7 +1609,7 @@ const CSS_STYLES = `
     overflow: hidden;
     transition: max-height 0.3s ease, padding 0.3s ease;
   }
-  .faq-item.open .faq-answer {
+  .faq-toggle:checked ~ .faq-answer {
     padding: 16px 24px 20px;
     max-height: 500px;
     border-top: 1px solid var(--dk-border);
@@ -1866,12 +1872,13 @@ export function renderBlogHTML(blog: BlogJSON, metaDescription: string, searchKe
     })
     .join("");
 
-  // FAQ
+  // FAQ — pure CSS toggle using hidden checkbox + label
   const faqItems = blog.faq
     .map(
-      (item) => `
+      (item, idx) => `
       <div class="faq-item">
-        <div class="faq-question">${escapeHtml(item.question)}</div>
+        <input type="checkbox" class="faq-toggle" id="faq-${idx}">
+        <label class="faq-question" for="faq-${idx}">${escapeHtml(item.question)}</label>
         <div class="faq-answer"><p>${item.answer}</p></div>
       </div>`
     )
@@ -1924,12 +1931,7 @@ export function renderBlogHTML(blog: BlogJSON, metaDescription: string, searchKe
       }
     });
 
-    // FAQ toggle
-    document.querySelectorAll('.faq-question').forEach(function(q) {
-      q.addEventListener('click', function() {
-        this.parentElement.classList.toggle('open');
-      });
-    });
+    // FAQ toggle — handled by pure CSS (checkbox + label), no JS needed
   </script>`;
 
   const fullTitle = `${blog.hero.title} ${blog.hero.subtitle}`;
