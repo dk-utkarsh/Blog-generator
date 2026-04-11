@@ -3,9 +3,10 @@ import { db } from "@/lib/db/client";
 import { blogs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { buildFeaturedImageSvg } from "@/lib/dentalkart/featured-image";
+import sharp from "sharp";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -34,6 +35,22 @@ export async function GET(
     subtitle: blog.subtitle || undefined,
     category: blog.category || undefined,
   });
+
+  // Return PNG if ?format=png
+  const format = request.nextUrl.searchParams.get("format");
+  if (format === "png") {
+    const pngBuffer = await sharp(Buffer.from(svg))
+      .resize(1200, 630)
+      .png()
+      .toBuffer();
+
+    return new NextResponse(new Uint8Array(pngBuffer), {
+      headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": "public, max-age=86400",
+      },
+    });
+  }
 
   return new NextResponse(svg, {
     headers: {

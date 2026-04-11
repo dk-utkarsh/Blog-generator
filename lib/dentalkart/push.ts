@@ -11,6 +11,7 @@ export interface PushBlogInput {
   slug: string;
   categoryName?: string;
   status?: "draft" | "publish";
+  featuredImageUrl?: string;
 }
 
 export interface PushBlogResult {
@@ -39,17 +40,21 @@ export async function pushBlogToDentalkart(
     // Extract just the inner content (body) with styles for the editor
     const editorContent = extractEditorContent(input.content);
 
-    // Generate and upload featured image
-    let featuredImageUrl: string | null = null;
-    try {
-      featuredImageUrl = await generateAndUploadFeaturedImage(token, {
-        title: input.title,
-        subtitle: input.excerpt,
-        category: input.categoryName,
-      });
-      console.log("[Push] Featured image uploaded:", featuredImageUrl);
-    } catch (err) {
-      console.warn("[Push] Featured image upload failed:", err);
+    // Use provided featured image URL (hosted on our app) or try uploading
+    let featuredImageUrl: string | null = input.featuredImageUrl || null;
+    if (!featuredImageUrl) {
+      try {
+        featuredImageUrl = await generateAndUploadFeaturedImage(token, {
+          title: input.title,
+          subtitle: input.excerpt,
+          category: input.categoryName,
+        });
+        console.log("[Push] Featured image uploaded:", featuredImageUrl);
+      } catch (err) {
+        console.warn("[Push] Featured image upload failed:", err);
+      }
+    } else {
+      console.log("[Push] Using hosted featured image:", featuredImageUrl);
     }
 
     const response = await fetch(`${DENTALKART_URL}/api/posts`, {
