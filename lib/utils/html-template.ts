@@ -861,6 +861,8 @@ const CSS_STYLES = `
     text-align: center;
     position: relative;
     transition: var(--transition);
+    overflow: hidden;
+    min-width: 0;
   }
   .info-card:nth-child(1) { border: 2px solid #42a5f5; }
   .info-card:nth-child(2) { border: 2px solid #ef5350; }
@@ -888,9 +890,11 @@ const CSS_STYLES = `
     margin-bottom: 10px;
   }
   .info-card-title {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
     margin-bottom: 4px;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
   .info-card:nth-child(1) .info-card-title { color: #1e88e5; }
   .info-card:nth-child(2) .info-card-title { color: #e53935; }

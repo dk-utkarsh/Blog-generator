@@ -26,34 +26,32 @@ export default function BlogEditor({
   const [keywords, setKeywords] = useState<KeywordLink[]>([]);
   const [ready, setReady] = useState(false);
 
-  // Toolbar state
+  // Toolbar
   const [showToolbar, setShowToolbar] = useState(false);
   const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0 });
-  const [toolbarMode, setToolbarMode] = useState<
-    "link" | "unlink" | "url-input"
-  >("link");
+  const [toolbarMode, setToolbarMode] = useState<"link" | "unlink" | "url-input">("link");
   const [urlValue, setUrlValue] = useState("https://www.dentalkart.com/");
-  const activeKwRef = useRef<HTMLAnchorElement | null>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
 
-  // ── helpers ──────────────────────────────────────────────
-  const doc = () => iframeRef.current?.contentDocument ?? null;
+  // Saved state for link/unlink operations
+  const savedRangeRef = useRef<Range | null>(null);
+  const activeKwRef = useRef<HTMLAnchorElement | null>(null);
+
+  // ── helpers ──────────────────────────────────────────
+  const getDoc = () => iframeRef.current?.contentDocument ?? null;
 
   const getLinkText = (el: Element) => {
     let t = "";
     el.childNodes.forEach((n) => {
       if (n.nodeType === Node.TEXT_NODE) t += n.textContent;
-      else if (
-        n.nodeType === Node.ELEMENT_NODE &&
-        !(n as HTMLElement).classList.contains("kw-x")
-      )
+      else if (n.nodeType === Node.ELEMENT_NODE && !(n as HTMLElement).classList.contains("kw-x"))
         t += n.textContent;
     });
     return t.trim();
   };
 
   const scanKeywords = useCallback(() => {
-    const d = doc();
+    const d = getDoc();
     if (!d) return;
     const kws: KeywordLink[] = [];
     d.querySelectorAll("a.keyword-highlight").forEach((el, i) => {
@@ -64,27 +62,14 @@ export default function BlogEditor({
   }, []);
 
   const getCleanBody = useCallback(() => {
-    const d = doc();
+    const d = getDoc();
     if (!d?.body) return "";
     const clone = d.body.cloneNode(true) as HTMLElement;
     clone.querySelectorAll(".kw-x").forEach((b) => b.remove());
     return clone.innerHTML;
   }, []);
 
-  const injectRemoveButtons = useCallback(() => {
-    const d = doc();
-    if (!d) return;
-    d.querySelectorAll("a.keyword-highlight").forEach((el) => {
-      if (el.querySelector(".kw-x")) return;
-      const btn = d.createElement("span");
-      btn.className = "kw-x";
-      btn.textContent = "\u00d7";
-      btn.setAttribute("contenteditable", "false");
-      el.appendChild(btn);
-    });
-  }, []);
-
-  // ── iframe init via useEffect (stable, runs once) ──────
+  // ── iframe init ────────────────────────────────────────
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;
@@ -97,7 +82,7 @@ export default function BlogEditor({
       d.body.style.outline = "none";
       d.execCommand("defaultParagraphSeparator", false, "p");
 
-      // inject editor CSS
+      // editor CSS
       const style = d.createElement("style");
       style.textContent = `
         body { min-height: 600px; }
@@ -128,7 +113,7 @@ export default function BlogEditor({
       `;
       d.head.appendChild(style);
 
-      // inject remove buttons
+      // inject x buttons
       d.querySelectorAll("a.keyword-highlight").forEach((el) => {
         if (el.querySelector(".kw-x")) return;
         const btn = d.createElement("span");
@@ -138,13 +123,13 @@ export default function BlogEditor({
         el.appendChild(btn);
       });
 
-      // input → mark dirty
+      // input
       d.body.addEventListener("input", () => {
         setHasChanges(true);
         setSaveStatus(null);
       });
 
-      // click: remove-btn or prevent navigation
+      // clicks
       d.addEventListener("click", (e) => {
         const target = e.target as HTMLElement;
         if (target.classList.contains("kw-x")) {
@@ -163,46 +148,43 @@ export default function BlogEditor({
         if (a) e.preventDefault();
       });
 
-      // mouseup → show toolbar
+      // mouseup → detect selection, save range, show toolbar
       d.addEventListener("mouseup", () => {
         setTimeout(() => {
           const sel = d.getSelection();
           if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
             setShowToolbar(false);
             setToolbarMode("link");
+            savedRangeRef.current = null;
             activeKwRef.current = null;
             return;
           }
+
           const range = sel.getRangeAt(0);
           const rect = range.getBoundingClientRect();
           if (rect.width === 0) {
             setShowToolbar(false);
             return;
           }
+
+          // SAVE the range so we can restore it when toolbar button is clicked
+          savedRangeRef.current = range.cloneRange();
+
           const iRect = iframe.getBoundingClientRect();
-          const scrollY = iframe.contentWindow?.scrollY || 0;
+          const sy = iframe.contentWindow?.scrollY || 0;
 
           setToolbarPos({
-            top: iRect.top + rect.top - scrollY - 52 + window.scrollY,
+            top: iRect.top + rect.top - sy - 52 + window.scrollY,
             left: Math.max(
               iRect.left + 10,
-              Math.min(
-                iRect.left + rect.left + rect.width / 2 - 110,
-                iRect.right - 280
-              )
+              Math.min(iRect.left + rect.left + rect.width / 2 - 110, iRect.right - 280)
             ),
           });
 
-          // check if selection is on a keyword
+          // is selection on a keyword link?
           const node = sel.anchorNode;
-          const parent =
-            node?.nodeType === Node.TEXT_NODE
-              ? node.parentElement
-              : (node as HTMLElement);
-          const kw = parent?.closest(
-            "a.keyword-highlight"
-          ) as HTMLAnchorElement | null;
-
+          const parent = node?.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
+          const kw = parent?.closest("a.keyword-highlight") as HTMLAnchorElement | null;
           if (kw) {
             activeKwRef.current = kw;
             setToolbarMode("unlink");
@@ -216,37 +198,44 @@ export default function BlogEditor({
 
       // auto-resize
       const resize = () => {
-        if (iframe && d.body)
-          iframe.style.height = `${Math.max(d.body.scrollHeight + 40, 600)}px`;
+        if (iframe && d.body) iframe.style.height = `${Math.max(d.body.scrollHeight + 40, 600)}px`;
       };
       resize();
       const obs = new MutationObserver(resize);
-      obs.observe(d.body, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-      });
+      obs.observe(d.body, { childList: true, subtree: true, characterData: true });
 
       setReady(true);
     };
 
     iframe.addEventListener("load", onLoad);
     return () => iframe.removeEventListener("load", onLoad);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [htmlContent]);
 
-  // re-scan keywords when ready or after mutations
+  // rescan keywords
   useEffect(() => {
     if (!ready) return;
     scanKeywords();
-    const d = doc();
+    const d = getDoc();
     if (!d?.body) return;
     const obs = new MutationObserver(() => scanKeywords());
     obs.observe(d.body, { childList: true, subtree: true });
     return () => obs.disconnect();
   }, [ready, scanKeywords]);
 
-  // ── actions ────────────────────────────────────────────
+  // ── toolbar actions ────────────────────────────────────
+
+  // Restore saved selection inside iframe
+  const restoreSelection = useCallback(() => {
+    const d = getDoc();
+    const range = savedRangeRef.current;
+    if (!d || !range) return false;
+    const sel = d.getSelection();
+    if (!sel) return false;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return true;
+  }, []);
+
   const handleAddLink = useCallback(() => {
     setToolbarMode("url-input");
     setUrlValue("https://www.dentalkart.com/");
@@ -254,10 +243,13 @@ export default function BlogEditor({
   }, []);
 
   const handleConfirmLink = useCallback(() => {
-    const d = doc();
-    if (!d) return;
+    const d = getDoc();
+    if (!d || !urlValue.trim()) return;
+
+    // Restore the saved selection
+    if (!restoreSelection()) return;
     const sel = d.getSelection();
-    if (!sel || sel.isCollapsed || !urlValue.trim()) return;
+    if (!sel || sel.isCollapsed) return;
 
     const range = sel.getRangeAt(0);
     const link = d.createElement("a");
@@ -274,6 +266,7 @@ export default function BlogEditor({
       range.insertNode(link);
     }
 
+    // Add x button
     const btn = d.createElement("span");
     btn.className = "kw-x";
     btn.textContent = "\u00d7";
@@ -281,19 +274,21 @@ export default function BlogEditor({
     link.appendChild(btn);
 
     sel.removeAllRanges();
+    savedRangeRef.current = null;
     setShowToolbar(false);
     setToolbarMode("link");
     setHasChanges(true);
     setSaveStatus(null);
-  }, [urlValue]);
+  }, [urlValue, restoreSelection]);
 
   const handleUnlink = useCallback(() => {
-    const d = doc();
+    const d = getDoc();
     const kw = activeKwRef.current;
     if (!d || !kw?.parentNode) return;
     const txt = d.createTextNode(getLinkText(kw));
     kw.parentNode.replaceChild(txt, kw);
     activeKwRef.current = null;
+    savedRangeRef.current = null;
     setShowToolbar(false);
     setToolbarMode("link");
     setHasChanges(true);
@@ -301,29 +296,24 @@ export default function BlogEditor({
   }, []);
 
   const removeKeyword = useCallback((index: number) => {
-    const d = doc();
+    const d = getDoc();
     if (!d) return;
-    const links = d.querySelectorAll("a.keyword-highlight");
-    const link = links[index];
+    const link = d.querySelectorAll("a.keyword-highlight")[index];
     if (!link?.parentNode) return;
-    const txt = d.createTextNode(getLinkText(link));
-    link.parentNode.replaceChild(txt, link);
+    link.parentNode.replaceChild(d.createTextNode(getLinkText(link)), link);
     setHasChanges(true);
     setSaveStatus(null);
   }, []);
 
   const scrollToKeyword = useCallback((index: number) => {
-    const d = doc();
+    const d = getDoc();
     if (!d) return;
     const el = d.querySelectorAll("a.keyword-highlight")[index] as HTMLElement;
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
     el.style.outline = "3px solid #f59e0b";
     el.style.outlineOffset = "3px";
-    setTimeout(() => {
-      el.style.outline = "";
-      el.style.outlineOffset = "";
-    }, 2000);
+    setTimeout(() => { el.style.outline = ""; el.style.outlineOffset = ""; }, 2000);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -346,9 +336,7 @@ export default function BlogEditor({
         setSaveStatus(`Error: ${data.error}`);
       }
     } catch (err) {
-      setSaveStatus(
-        `Error: ${err instanceof Error ? err.message : "Network error"}`
-      );
+      setSaveStatus(`Error: ${err instanceof Error ? err.message : "Network error"}`);
     } finally {
       setSaving(false);
     }
@@ -364,69 +352,37 @@ export default function BlogEditor({
             <div className="w-2 h-2 rounded-full bg-green-400" />
             <h3 className="font-semibold text-sm">Editing</h3>
             {hasChanges && (
-              <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
-                Unsaved changes
-              </span>
+              <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Unsaved changes</span>
             )}
           </div>
           <div className="flex items-center gap-2">
             {saveStatus && (
-              <span
-                className={`text-xs px-2 py-1 rounded font-medium ${
-                  saveStatus.startsWith("Error")
-                    ? "bg-red-100 text-red-700"
-                    : "bg-green-100 text-green-700"
-                }`}
-              >
+              <span className={`text-xs px-2 py-1 rounded font-medium ${saveStatus.startsWith("Error") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
                 {saveStatus}
               </span>
             )}
             <button
               onClick={handleSave}
               disabled={!hasChanges || saving}
-              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
-                !hasChanges || saving
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
-              }`}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${!hasChanges || saving ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm"}`}
             >
               {saving ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </div>
 
-        {/* Keyword panel */}
         {keywords.length > 0 && (
           <div className="px-3 pb-3">
             <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-semibold text-slate-700">
-                  Keyword Links ({keywords.length})
-                </h4>
-                <span className="text-xs text-slate-400">
-                  Click to locate | x to remove
-                </span>
+                <h4 className="text-xs font-semibold text-slate-700">Keyword Links ({keywords.length})</h4>
+                <span className="text-xs text-slate-400">Click to locate | x to remove</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {keywords.map((kw) => (
-                  <span
-                    key={`${kw.text}-${kw.index}`}
-                    className="inline-flex items-center bg-white border border-slate-200 rounded-md px-2 py-1 text-xs shadow-sm hover:border-blue-300 transition-colors"
-                  >
-                    <button
-                      onClick={() => scrollToKeyword(kw.index)}
-                      className="text-blue-600 font-medium hover:text-blue-800 mr-1.5 max-w-[200px] truncate"
-                      title={kw.url}
-                    >
-                      {kw.text}
-                    </button>
-                    <button
-                      onClick={() => removeKeyword(kw.index)}
-                      className="text-slate-300 hover:text-red-500 transition-colors font-bold text-sm leading-none"
-                      title="Remove"
-                    >
-                      x
-                    </button>
+                  <span key={`${kw.text}-${kw.index}`} className="inline-flex items-center bg-white border border-slate-200 rounded-md px-2 py-1 text-xs shadow-sm hover:border-blue-300 transition-colors">
+                    <button onClick={() => scrollToKeyword(kw.index)} className="text-blue-600 font-medium hover:text-blue-800 mr-1.5 max-w-[200px] truncate" title={kw.url}>{kw.text}</button>
+                    <button onClick={() => removeKeyword(kw.index)} className="text-slate-300 hover:text-red-500 transition-colors font-bold text-sm leading-none" title="Remove">x</button>
                   </span>
                 ))}
               </div>
@@ -436,8 +392,8 @@ export default function BlogEditor({
 
         <div className="px-3 py-2 border-t bg-gray-50 text-xs text-gray-400 flex gap-4">
           <span>Click text to edit</span>
-          <span>Select text to add keyword link</span>
-          <span>Hover keyword to remove</span>
+          <span>Select text to link/unlink</span>
+          <span>Hover keyword for x button</span>
         </div>
       </div>
 
@@ -456,57 +412,27 @@ export default function BlogEditor({
                 onChange={(e) => setUrlValue(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleConfirmLink();
-                  if (e.key === "Escape") {
-                    setToolbarMode("link");
-                    setShowToolbar(false);
-                  }
+                  if (e.key === "Escape") { setToolbarMode("link"); setShowToolbar(false); }
                 }}
                 placeholder="https://www.dentalkart.com/c/..."
                 className="bg-gray-800 text-white text-xs px-2.5 py-1.5 rounded w-72 border border-gray-600 focus:outline-none focus:border-blue-400"
               />
-              <button
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleConfirmLink();
-                }}
-                className="bg-blue-500 text-white text-xs px-3 py-1.5 rounded hover:bg-blue-600 font-semibold whitespace-nowrap"
-              >
+              <button onMouseDown={(e) => { e.preventDefault(); handleConfirmLink(); }} className="bg-blue-500 text-white text-xs px-3 py-1.5 rounded hover:bg-blue-600 font-semibold whitespace-nowrap">
                 Link
               </button>
-              <button
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setToolbarMode("link");
-                  setShowToolbar(false);
-                }}
-                className="text-gray-400 hover:text-white text-xs"
-              >
+              <button onMouseDown={(e) => { e.preventDefault(); setToolbarMode("link"); setShowToolbar(false); }} className="text-gray-400 hover:text-white text-xs">
                 Esc
               </button>
             </div>
           ) : toolbarMode === "unlink" ? (
             <div className="flex items-center gap-1">
-              <span className="text-xs text-gray-400 mr-1">
-                Keyword linked
-              </span>
-              <button
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleUnlink();
-                }}
-                className="bg-red-500 text-white text-xs px-3 py-1.5 rounded hover:bg-red-600 font-semibold whitespace-nowrap"
-              >
+              <span className="text-xs text-gray-400 mr-1">Keyword linked</span>
+              <button onMouseDown={(e) => { e.preventDefault(); handleUnlink(); }} className="bg-red-500 text-white text-xs px-3 py-1.5 rounded hover:bg-red-600 font-semibold whitespace-nowrap">
                 Unlink
               </button>
             </div>
           ) : (
-            <button
-              onMouseDown={(e) => {
-                e.preventDefault();
-                handleAddLink();
-              }}
-              className="text-xs px-2 py-1 hover:bg-gray-700 rounded font-medium"
-            >
+            <button onMouseDown={(e) => { e.preventDefault(); handleAddLink(); }} className="text-xs px-2 py-1 hover:bg-gray-700 rounded font-medium">
               + Add Keyword Link
             </button>
           )}
