@@ -583,7 +583,7 @@ const CSS_STYLES = `
   /* ===== HERO ===== */
   .hero {
     background: linear-gradient(135deg, var(--dk-blue), #004999);
-    color: #fff;
+    color: #fff !important;
     padding: 72px 48px 64px;
     text-align: center;
     border-radius: 0 0 28px 28px;
@@ -633,13 +633,14 @@ const CSS_STYLES = `
     font-weight: 800;
     line-height: 1.2;
     margin-bottom: 20px;
-    color: #fff;
+    color: #fff !important;
     letter-spacing: -0.5px;
   }
   .hero-subtitle {
     font-size: 24px;
     font-weight: 400;
     opacity: 0.85;
+    color: #fff !important;
   }
   .hero-description {
     font-size: 17px;
@@ -647,6 +648,10 @@ const CSS_STYLES = `
     max-width: 680px;
     margin: 0 auto 20px;
     line-height: 1.7;
+    color: #fff !important;
+  }
+  .hero p, .hero span, .hero div {
+    color: #fff !important;
   }
   .hero-stats {
     display: flex;
@@ -1613,7 +1618,7 @@ const CSS_STYLES = `
   /* ===== CTA BANNER ===== */
   .cta-banner {
     background: linear-gradient(135deg, var(--dk-blue), #004999);
-    color: #fff;
+    color: #fff !important;
     padding: 56px 48px;
     border-radius: 24px;
     text-align: center;
@@ -1639,9 +1644,12 @@ const CSS_STYLES = `
     font-size: 30px;
     font-weight: 800;
     margin-bottom: 14px;
-    color: #fff;
+    color: #fff !important;
     border-bottom: none;
     display: block;
+  }
+  .cta-banner p, .cta-banner span, .cta-banner div {
+    color: #fff !important;
   }
   .cta-banner p {
     font-size: 17px;

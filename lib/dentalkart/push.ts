@@ -118,30 +118,71 @@ async function generateAndUploadFeaturedImage(
   token: string,
   input: { title: string; subtitle?: string; category?: string }
 ): Promise<string | null> {
-  // Generate SVG and rasterize to PNG
+  // Generate SVG and rasterize to PNG at full size
   const svg = buildFeaturedImageSvg(input);
-  const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer();
+  const pngBuffer = await sharp(Buffer.from(svg))
+    .resize(1200, 630)
+    .png()
+    .toBuffer();
 
-  // Build multipart form data
   const filename = `featured-${Date.now()}.png`;
-  const formData = new FormData();
-  const blob = new Blob([new Uint8Array(pngBuffer)], { type: "image/png" });
-  formData.append("file", blob, filename);
 
-  const response = await fetch(`${DENTALKART_URL}/api/media`, {
-    method: "POST",
-    headers: {
-      Cookie: `auth-token=${token}`,
-    },
-    body: formData,
-  });
+  // Try uploading with different field names (APIs vary)
+  const fieldNames = ["file", "image", "media"];
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Media upload failed: ${response.status} ${text}`);
+  for (const field of fieldNames) {
+    try {
+      const formData = new FormData();
+      const blob = new Blob([new Uint8Array(pngBuffer)], { type: "image/png" });
+      formData.append(field, blob, filename);
+
+      const response = await fetch(`${DENTALKART_URL}/api/media`, {
+        method: "POST",
+        headers: {
+          Cookie: `auth-token=${token}`,
+        },
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`[Push] Media upload success (field: ${field}):`, JSON.stringify(data));
+        return data.url || data.imageUrl || data.filePath || data.src || null;
+      }
+
+      const text = await response.text();
+      console.log(`[Push] Media upload failed with field "${field}": ${response.status} ${text}`);
+    } catch (err) {
+      console.log(`[Push] Media upload error with field "${field}":`, err);
+    }
   }
 
-  const data = await response.json();
-  console.log("[Push] Media upload response:", JSON.stringify(data));
-  return data.url || data.imageUrl || data.filePath || null;
+  // Try uploading as base64 JSON instead of multipart
+  try {
+    const base64 = pngBuffer.toString("base64");
+    const response = await fetch(`${DENTALKART_URL}/api/media`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `auth-token=${token}`,
+      },
+      body: JSON.stringify({
+        filename,
+        data: `data:image/png;base64,${base64}`,
+        type: "image/png",
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log("[Push] Media upload success (base64):", JSON.stringify(data));
+      return data.url || data.imageUrl || data.filePath || data.src || null;
+    }
+    const text = await response.text();
+    console.log(`[Push] Media upload failed (base64): ${response.status} ${text}`);
+  } catch (err) {
+    console.log("[Push] Media upload error (base64):", err);
+  }
+
+  return null;
 }
