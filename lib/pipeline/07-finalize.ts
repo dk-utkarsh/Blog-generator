@@ -20,7 +20,7 @@ export async function finalize(
 
   const { blogContent, topic, research } = input;
 
-  const fullHtml = renderBlogHTML(blogContent.blogJson, blogContent.blogSubtitle);
+  const fullHtml = renderBlogHTML(blogContent.blogJson, blogContent.blogSubtitle, topic.searchKeyword, topic.category);
 
   await db
     .update(blogs)

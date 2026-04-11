@@ -31,6 +31,7 @@ export async function writeBlog(
   const { text } = await generateText({
     model: google(GEMINI_TEXT_MODEL),
     prompt,
+    maxOutputTokens: 8192,
   });
 
   // Parse JSON — strip markdown fences if LLM adds them despite instructions
@@ -40,6 +41,52 @@ export async function writeBlog(
     .trim();
 
   const blogJson: BlogJSON = JSON.parse(cleanJson);
+
+  // Strip main keyword from entire blog (AI sometimes ignores the ban)
+  // Remove keyword-highlight links containing the main keyword
+  const kwEscaped = topic.searchKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const kwLinkPattern = new RegExp(
+    `<a[^>]*class=["']keyword-highlight["'][^>]*>[^<]*?${kwEscaped}[^<]*?</a>`,
+    "gi"
+  );
+  const stripKwLinks = (text: string) => text.replace(kwLinkPattern, (match) => {
+    const textMatch = match.match(/>([^<]*)</);
+    return textMatch ? textMatch[1] : "";
+  });
+
+  // Strip from hero description
+  blogJson.hero.description = stripKwLinks(blogJson.hero.description);
+
+  // Strip from all section content
+  for (const section of blogJson.sections) {
+    section.content = stripKwLinks(section.content);
+  }
+
+  // Strip from FAQ answers
+  for (const faq of blogJson.faq) {
+    faq.answer = stripKwLinks(faq.answer);
+  }
+
+  // Deduplicate keyword highlights — each keyword linked only once in entire blog
+  const seenKeywords = new Set<string>();
+  const dedupeKeywords = (html: string) => {
+    return html.replace(/<a[^>]*class=["']keyword-highlight["'][^>]*>([^<]*)<\/a>/gi, (match, text) => {
+      const key = text.trim().toLowerCase();
+      if (seenKeywords.has(key)) {
+        return text; // Return plain text, no link
+      }
+      seenKeywords.add(key);
+      return match; // Keep the first occurrence
+    });
+  };
+
+  blogJson.hero.description = dedupeKeywords(blogJson.hero.description);
+  for (const section of blogJson.sections) {
+    section.content = dedupeKeywords(section.content);
+  }
+  for (const faq of blogJson.faq) {
+    faq.answer = dedupeKeywords(faq.answer);
+  }
 
   // Calculate word count from text content only
   const textParts = [

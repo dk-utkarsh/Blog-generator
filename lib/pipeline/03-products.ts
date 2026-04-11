@@ -1,15 +1,8 @@
 import { scrapeDentalKartProducts } from "../scrapers/dentalkart";
-import { CATEGORY_KEYWORD_MAP } from "../config";
 import type { DentalKartProduct } from "../scrapers/dentalkart";
 
 export function extractSearchKeyword(title: string, defaultKeyword: string): string {
   const lower = title.toLowerCase();
-
-  for (const [key, value] of Object.entries(CATEGORY_KEYWORD_MAP)) {
-    if (lower.includes(key)) {
-      return value;
-    }
-  }
 
   const words = lower
     .replace(/[^a-z\s]/g, "")
