@@ -39,7 +39,7 @@ export async function pushBlogToDentalkart(
     // Extract just the inner content (body) with styles for the editor
     const editorContent = extractEditorContent(input.content);
 
-    // Generate and upload featured image (non-blocking — blog still pushes if image fails)
+    // Generate and upload featured image
     let featuredImageUrl: string | null = null;
     try {
       featuredImageUrl = await generateAndUploadFeaturedImage(token, {
@@ -47,8 +47,9 @@ export async function pushBlogToDentalkart(
         subtitle: input.excerpt,
         category: input.categoryName,
       });
+      console.log("[Push] Featured image uploaded:", featuredImageUrl);
     } catch (err) {
-      console.warn("Featured image upload failed:", err);
+      console.warn("[Push] Featured image upload failed:", err);
     }
 
     const response = await fetch(`${DENTALKART_URL}/api/posts`, {
@@ -141,5 +142,6 @@ async function generateAndUploadFeaturedImage(
   }
 
   const data = await response.json();
-  return data.url || null;
+  console.log("[Push] Media upload response:", JSON.stringify(data));
+  return data.url || data.imageUrl || data.filePath || null;
 }

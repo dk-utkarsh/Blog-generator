@@ -67,10 +67,15 @@ export default async function BlogPage({
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-  // Apply category-based theme colors to the stored HTML
-  const themedHtml = blog.htmlContent && blog.category
-    ? applyThemeToHtml(blog.htmlContent, blog.category)
+  // Strip editor artifacts (.kw-x buttons) from stored HTML
+  const cleanedHtml = blog.htmlContent
+    ? blog.htmlContent.replace(/<span[^>]*class=["']kw-x["'][^>]*>[^<]*<\/span>/gi, "")
     : blog.htmlContent;
+
+  // Apply category-based theme colors to the stored HTML
+  const themedHtml = cleanedHtml && blog.category
+    ? applyThemeToHtml(cleanedHtml, blog.category)
+    : cleanedHtml;
 
   // Extract body and styles from themed HTML
   const bodyMatch = themedHtml?.match(/<body[^>]*>([\s\S]*?)<\/body>/i);

@@ -43,7 +43,7 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
     const d = getDoc();
     if (!d?.body) return "";
     const clone = d.body.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll("#ed-toolbar").forEach((b) => b.remove());
+    clone.querySelectorAll("#ed-toolbar, .kw-x").forEach((b) => b.remove());
     return clone.innerHTML;
   }, []);
 
@@ -267,7 +267,11 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
     `;
 
     // Inject CSS into <head>, toolbar+script into <body>
-    return initialHtmlRef.current
+    // Strip any leftover .kw-x buttons from previously saved HTML
+    const cleanHtml = initialHtmlRef.current
+      .replace(/<span[^>]*class=["']kw-x["'][^>]*>[^<]*<\/span>/gi, "");
+
+    return cleanHtml
       .replace("</head>", editorCSS + "</head>")
       .replace("</body>", toolbarHtml + editorScript + "</body>");
   }, []);
