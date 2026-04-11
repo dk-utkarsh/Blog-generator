@@ -207,6 +207,10 @@ export default function BlogEditor({
       setReady(true);
     };
 
+    // If iframe already loaded (srcDoc loads synchronously), call immediately
+    if (iframe.contentDocument?.readyState === "complete" && iframe.contentDocument?.body) {
+      onLoad();
+    }
     iframe.addEventListener("load", onLoad);
     return () => iframe.removeEventListener("load", onLoad);
   }, [htmlContent]);

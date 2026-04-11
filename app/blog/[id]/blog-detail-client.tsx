@@ -29,10 +29,10 @@ export default function BlogDetailClient({
   const [mode, setMode] = useState<"preview" | "edit">("preview");
   const [editedBodyHtml, setEditedBodyHtml] = useState<string | null>(null);
   const previewRef = useRef<HTMLIFrameElement>(null);
-  const baseUrl =
-    typeof window !== "undefined"
-      ? window.location.origin
-      : "http://localhost:3000";
+  const [baseUrl, setBaseUrl] = useState("");
+  useEffect(() => {
+    setBaseUrl(window.location.origin);
+  }, []);
 
   const handleSave = useCallback((html: string) => {
     setEditedBodyHtml(html);
