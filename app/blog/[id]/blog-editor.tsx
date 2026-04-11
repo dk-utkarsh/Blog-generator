@@ -29,8 +29,9 @@ export default function BlogEditor({
   // Floating toolbar
   const [showToolbar, setShowToolbar] = useState(false);
   const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0 });
-  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [toolbarMode, setToolbarMode] = useState<"link" | "unlink" | "url-input">("link");
   const [urlValue, setUrlValue] = useState("https://www.dentalkart.com/");
+  const [activeKeywordEl, setActiveKeywordEl] = useState<HTMLAnchorElement | null>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
 
   const getDoc = useCallback(() => {
@@ -139,11 +140,55 @@ export default function BlogEditor({
     doc.body.contentEditable = "true";
     doc.body.style.outline = "none";
 
-    // Editor styles
+    // Use <p> tags on Enter instead of <div>
+    doc.execCommand("defaultParagraphSeparator", false, "p");
+
+    // Editor styles — ensure new typed content inherits blog fonts/colors
     const s = doc.createElement("style");
     s.textContent = `
       body { min-height: 600px; }
       body:focus { outline: none !important; }
+
+      /* Inherit blog styles for newly typed content */
+      .hero, .hero * {
+        font-family: inherit;
+        color: inherit;
+      }
+      .toc li {
+        color: var(--dk-blue);
+        font-weight: 600;
+        font-size: 16px;
+      }
+      .section h2, .section h2 * {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        color: var(--dk-dark, #1a1a2e);
+      }
+      .section-content, .section-content div, .section-content p, .section-content span {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        font-size: 16px;
+        line-height: 1.7;
+        color: #333;
+      }
+      .blog-content, .blog-content div, .blog-content p {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        line-height: 1.7;
+        color: #333;
+      }
+      .faq-question, .faq-question * {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        color: var(--dk-dark, #1a1a2e);
+      }
+      .faq-answer, .faq-answer div, .faq-answer p, .faq-answer span {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        font-size: 16px;
+        line-height: 1.7;
+        color: #333;
+      }
+      .cta-banner, .cta-banner * {
+        font-family: inherit;
+        color: inherit;
+      }
+
       a.keyword-highlight {
         position: relative !important;
         cursor: text !important;
@@ -221,7 +266,7 @@ export default function BlogEditor({
       if (anchor) e.preventDefault();
     });
 
-    // Selection toolbar
+    // Selection toolbar — detect if selection is on a keyword link
     doc.addEventListener("mouseup", () => {
       setTimeout(() => {
         const sel = doc.getSelection();
@@ -244,10 +289,26 @@ export default function BlogEditor({
               )
             ),
           });
+
+          // Check if selection is inside a keyword link
+          const anchorNode = sel.anchorNode;
+          const parentEl = anchorNode?.nodeType === Node.TEXT_NODE
+            ? anchorNode.parentElement
+            : anchorNode as HTMLElement;
+          const kwLink = parentEl?.closest("a.keyword-highlight") as HTMLAnchorElement | null;
+
+          if (kwLink) {
+            setActiveKeywordEl(kwLink);
+            setToolbarMode("unlink");
+          } else {
+            setActiveKeywordEl(null);
+            setToolbarMode("link");
+          }
           setShowToolbar(true);
         } else {
           setShowToolbar(false);
-          setShowUrlInput(false);
+          setToolbarMode("link");
+          setActiveKeywordEl(null);
         }
       }, 10);
     });
@@ -258,10 +319,32 @@ export default function BlogEditor({
 
   // Add keyword link
   const handleAddLink = useCallback(() => {
-    setShowUrlInput(true);
+    setToolbarMode("url-input");
     setUrlValue("https://www.dentalkart.com/");
     setTimeout(() => urlInputRef.current?.focus(), 50);
   }, []);
+
+  // Unlink — convert keyword back to normal text
+  const handleUnlink = useCallback(() => {
+    const doc = getDoc();
+    if (!doc || !activeKeywordEl || !activeKeywordEl.parentNode) return;
+    let text = "";
+    activeKeywordEl.childNodes.forEach((n) => {
+      if (n.nodeType === Node.TEXT_NODE) text += n.textContent;
+      else if (
+        n.nodeType === Node.ELEMENT_NODE &&
+        !(n as HTMLElement).classList.contains("kw-x")
+      )
+        text += n.textContent;
+    });
+    const textNode = doc.createTextNode(text.trim());
+    activeKeywordEl.parentNode.replaceChild(textNode, activeKeywordEl);
+    setShowToolbar(false);
+    setActiveKeywordEl(null);
+    setHasChanges(true);
+    setSaveStatus(null);
+    scanKeywords();
+  }, [getDoc, activeKeywordEl, scanKeywords]);
 
   const handleConfirmLink = useCallback(() => {
     const doc = getDoc();
@@ -293,7 +376,7 @@ export default function BlogEditor({
 
     sel.removeAllRanges();
     setShowToolbar(false);
-    setShowUrlInput(false);
+    setToolbarMode("link");
     setHasChanges(true);
     setSaveStatus(null);
     scanKeywords();
@@ -435,10 +518,10 @@ export default function BlogEditor({
       {/* Floating toolbar */}
       {showToolbar && (
         <div
-          className="fixed z-[9999] bg-gray-900 text-white rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2"
+          className="fixed z-[9999] bg-gray-900 text-white rounded-xl shadow-2xl px-3 py-2 flex items-center gap-2"
           style={{ top: toolbarPos.top, left: toolbarPos.left }}
         >
-          {showUrlInput ? (
+          {toolbarMode === "url-input" ? (
             <div className="flex items-center gap-2">
               <input
                 ref={urlInputRef}
@@ -448,7 +531,7 @@ export default function BlogEditor({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleConfirmLink();
                   if (e.key === "Escape") {
-                    setShowUrlInput(false);
+                    setToolbarMode("link");
                     setShowToolbar(false);
                   }
                 }}
@@ -467,12 +550,25 @@ export default function BlogEditor({
               <button
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  setShowUrlInput(false);
+                  setToolbarMode("link");
                   setShowToolbar(false);
                 }}
                 className="text-gray-400 hover:text-white text-xs"
               >
                 Esc
+              </button>
+            </div>
+          ) : toolbarMode === "unlink" ? (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-400 mr-1">Keyword linked</span>
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleUnlink();
+                }}
+                className="bg-red-500 text-white text-xs px-3 py-1.5 rounded hover:bg-red-600 font-semibold whitespace-nowrap"
+              >
+                Unlink
               </button>
             </div>
           ) : (
