@@ -75,7 +75,7 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
         }
         .cta-banner, .cta-banner * { font-family: inherit; color: inherit; }
 
-        a.keyword-highlight { position: relative !important; cursor: text !important; }
+        a.keyword-highlight { position: relative !important; cursor: text !important; display: inline-block !important; }
         a.keyword-highlight .kw-x {
           display:none; position:absolute; top:-10px; right:-10px;
           width:22px; height:22px; background:#ef4444; color:#fff;
