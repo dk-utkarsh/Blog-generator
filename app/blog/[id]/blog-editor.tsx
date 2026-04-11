@@ -14,11 +14,7 @@ interface BlogEditorProps {
   onSave: (bodyHtml: string) => void;
 }
 
-export default function BlogEditor({
-  blogId,
-  htmlContent,
-  onSave,
-}: BlogEditorProps) {
+export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -26,18 +22,6 @@ export default function BlogEditor({
   const [keywords, setKeywords] = useState<KeywordLink[]>([]);
   const [ready, setReady] = useState(false);
 
-  // Toolbar
-  const [showToolbar, setShowToolbar] = useState(false);
-  const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0 });
-  const [toolbarMode, setToolbarMode] = useState<"link" | "unlink" | "url-input">("link");
-  const [urlValue, setUrlValue] = useState("https://www.dentalkart.com/");
-  const urlInputRef = useRef<HTMLInputElement>(null);
-
-  // Saved state for link/unlink operations
-  const savedRangeRef = useRef<Range | null>(null);
-  const activeKwRef = useRef<HTMLAnchorElement | null>(null);
-
-  // ── helpers ──────────────────────────────────────────
   const getDoc = () => iframeRef.current?.contentDocument ?? null;
 
   const getLinkText = (el: Element) => {
@@ -65,26 +49,15 @@ export default function BlogEditor({
     const d = getDoc();
     if (!d?.body) return "";
     const clone = d.body.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll(".kw-x").forEach((b) => b.remove());
+    clone.querySelectorAll(".kw-x, #ed-toolbar").forEach((b) => b.remove());
     return clone.innerHTML;
   }, []);
 
-  // ── iframe init ────────────────────────────────────────
-  useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-
-    const onLoad = () => {
-      const d = iframe.contentDocument;
-      if (!d?.body) return;
-
-      d.body.contentEditable = "true";
-      d.body.style.outline = "none";
-      d.execCommand("defaultParagraphSeparator", false, "p");
-
-      // editor CSS
-      const style = d.createElement("style");
-      style.textContent = `
+  // ── Build the full editor HTML with toolbar injected INSIDE the iframe ──
+  const buildEditorHtml = useCallback(() => {
+    // Inject editor CSS + toolbar HTML + script directly into the blog HTML
+    const editorCSS = `
+      <style id="ed-style">
         body { min-height: 600px; }
         body:focus { outline: none !important; }
         .hero, .hero * { font-family: inherit; color: inherit; }
@@ -101,6 +74,7 @@ export default function BlogEditor({
           font-family: 'Inter',system-ui,sans-serif; font-size:16px; line-height:1.7; color:#333;
         }
         .cta-banner, .cta-banner * { font-family: inherit; color: inherit; }
+
         a.keyword-highlight { position: relative !important; cursor: text !important; }
         a.keyword-highlight .kw-x {
           display:none; position:absolute; top:-10px; right:-10px;
@@ -110,195 +84,285 @@ export default function BlogEditor({
         }
         a.keyword-highlight:hover .kw-x { display:block; }
         a.keyword-highlight:hover { outline:2px solid #3b82f6 !important; outline-offset:2px !important; border-radius:4px; }
-      `;
-      d.head.appendChild(style);
 
-      // inject x buttons
-      d.querySelectorAll("a.keyword-highlight").forEach((el) => {
-        if (el.querySelector(".kw-x")) return;
-        const btn = d.createElement("span");
-        btn.className = "kw-x";
-        btn.textContent = "\u00d7";
-        btn.setAttribute("contenteditable", "false");
-        el.appendChild(btn);
-      });
-
-      // input
-      d.body.addEventListener("input", () => {
-        setHasChanges(true);
-        setSaveStatus(null);
-      });
-
-      // clicks
-      d.addEventListener("click", (e) => {
-        const target = e.target as HTMLElement;
-        if (target.classList.contains("kw-x")) {
-          e.preventDefault();
-          e.stopPropagation();
-          const link = target.closest("a.keyword-highlight");
-          if (link?.parentNode) {
-            const txt = d.createTextNode(getLinkText(link));
-            link.parentNode.replaceChild(txt, link);
-            setHasChanges(true);
-            setSaveStatus(null);
-          }
-          return;
+        #ed-toolbar {
+          display: none;
+          position: absolute;
+          z-index: 99999;
+          background: #1f2937;
+          color: #fff;
+          border-radius: 10px;
+          padding: 6px 10px;
+          box-shadow: 0 8px 24px rgba(0,0,0,.3);
+          font-family: 'Inter',system-ui,sans-serif;
+          font-size: 13px;
+          white-space: nowrap;
         }
-        const a = target.closest("a");
-        if (a) e.preventDefault();
-      });
+        #ed-toolbar.show { display: flex; align-items: center; gap: 6px; }
+        #ed-toolbar button {
+          background: none; border: none; color: #fff; cursor: pointer;
+          padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+        }
+        #ed-toolbar button:hover { background: #374151; }
+        #ed-toolbar button.primary { background: #3b82f6; }
+        #ed-toolbar button.primary:hover { background: #2563eb; }
+        #ed-toolbar button.danger { background: #ef4444; }
+        #ed-toolbar button.danger:hover { background: #dc2626; }
+        #ed-toolbar input {
+          background: #374151; border: 1px solid #4b5563; color: #fff;
+          padding: 4px 8px; border-radius: 6px; font-size: 12px; width: 260px;
+          outline: none;
+        }
+        #ed-toolbar input:focus { border-color: #3b82f6; }
+        #ed-toolbar .label { color: #9ca3af; font-size: 11px; margin-right: 4px; }
+      </style>
+    `;
 
-      // mouseup → detect selection, save range, show toolbar
-      d.addEventListener("mouseup", () => {
-        setTimeout(() => {
-          const sel = d.getSelection();
-          if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
-            setShowToolbar(false);
-            setToolbarMode("link");
-            savedRangeRef.current = null;
-            activeKwRef.current = null;
-            return;
-          }
+    const toolbarHtml = `<div id="ed-toolbar" contenteditable="false"></div>`;
 
-          const range = sel.getRangeAt(0);
-          const rect = range.getBoundingClientRect();
-          if (rect.width === 0) {
-            setShowToolbar(false);
-            return;
-          }
+    const editorScript = `
+      <script>
+      (function() {
+        document.body.contentEditable = 'true';
+        document.execCommand('defaultParagraphSeparator', false, 'p');
 
-          // SAVE the range so we can restore it when toolbar button is clicked
-          savedRangeRef.current = range.cloneRange();
+        var toolbar = document.getElementById('ed-toolbar');
+        var savedRange = null;
+        var activeKw = null;
 
-          const iRect = iframe.getBoundingClientRect();
-          const sy = iframe.contentWindow?.scrollY || 0;
-
-          setToolbarPos({
-            top: iRect.top + rect.top - sy - 52 + window.scrollY,
-            left: Math.max(
-              iRect.left + 10,
-              Math.min(iRect.left + rect.left + rect.width / 2 - 110, iRect.right - 280)
-            ),
+        // inject x buttons on keyword links
+        function injectXButtons() {
+          document.querySelectorAll('a.keyword-highlight').forEach(function(el) {
+            if (el.querySelector('.kw-x')) return;
+            var btn = document.createElement('span');
+            btn.className = 'kw-x';
+            btn.textContent = '\\u00d7';
+            btn.setAttribute('contenteditable', 'false');
+            el.appendChild(btn);
           });
+        }
+        injectXButtons();
 
-          // is selection on a keyword link?
-          const node = sel.anchorNode;
-          const parent = node?.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
-          const kw = parent?.closest("a.keyword-highlight") as HTMLAnchorElement | null;
-          if (kw) {
-            activeKwRef.current = kw;
-            setToolbarMode("unlink");
-          } else {
-            activeKwRef.current = null;
-            setToolbarMode("link");
+        function getLinkText(el) {
+          var t = '';
+          el.childNodes.forEach(function(n) {
+            if (n.nodeType === Node.TEXT_NODE) t += n.textContent;
+            else if (n.nodeType === Node.ELEMENT_NODE && !n.classList.contains('kw-x'))
+              t += n.textContent;
+          });
+          return t.trim();
+        }
+
+        function notify(type, data) {
+          window.parent.postMessage({ source: 'blog-editor', type: type, data: data }, '*');
+        }
+
+        // input → notify parent
+        document.body.addEventListener('input', function() {
+          notify('changed');
+        });
+
+        // click: x button or prevent nav
+        document.addEventListener('click', function(e) {
+          var target = e.target;
+          if (target.classList && target.classList.contains('kw-x')) {
+            e.preventDefault();
+            e.stopPropagation();
+            var link = target.closest('a.keyword-highlight');
+            if (link && link.parentNode) {
+              var txt = document.createTextNode(getLinkText(link));
+              link.parentNode.replaceChild(txt, link);
+              notify('changed');
+              notify('keywords-changed');
+            }
+            return;
           }
-          setShowToolbar(true);
-        }, 10);
-      });
+          var a = target.closest ? target.closest('a') : null;
+          if (a) e.preventDefault();
+        });
 
-      // auto-resize
-      const resize = () => {
-        if (iframe && d.body) iframe.style.height = `${Math.max(d.body.scrollHeight + 40, 600)}px`;
-      };
-      resize();
-      const obs = new MutationObserver(resize);
-      obs.observe(d.body, { childList: true, subtree: true, characterData: true });
+        // mouseup → show toolbar
+        document.addEventListener('mouseup', function(e) {
+          // ignore clicks on toolbar itself
+          if (toolbar.contains(e.target)) return;
 
-      setReady(true);
-    };
+          setTimeout(function() {
+            var sel = window.getSelection();
+            if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+              toolbar.className = '';
+              toolbar.innerHTML = '';
+              savedRange = null;
+              activeKw = null;
+              return;
+            }
+            var range = sel.getRangeAt(0);
+            var rect = range.getBoundingClientRect();
+            if (rect.width === 0) { toolbar.className = ''; return; }
 
-    // If iframe already loaded (srcDoc loads synchronously), call immediately
-    if (iframe.contentDocument?.readyState === "complete" && iframe.contentDocument?.body) {
-      onLoad();
-    }
-    iframe.addEventListener("load", onLoad);
-    return () => iframe.removeEventListener("load", onLoad);
+            savedRange = range.cloneRange();
+
+            // position toolbar above selection
+            toolbar.style.top = (rect.top + window.scrollY - 44) + 'px';
+            toolbar.style.left = Math.max(10, rect.left + rect.width/2 - 80) + 'px';
+
+            // check if on keyword
+            var node = sel.anchorNode;
+            var parent = node && node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+            var kw = parent && parent.closest ? parent.closest('a.keyword-highlight') : null;
+
+            if (kw) {
+              activeKw = kw;
+              toolbar.innerHTML = '<span class="label">Keyword linked</span><button class="danger" id="ed-unlink">Unlink</button>';
+            } else {
+              activeKw = null;
+              toolbar.innerHTML = '<button class="primary" id="ed-link">+ Add Keyword Link</button>';
+            }
+            toolbar.className = 'show';
+          }, 10);
+        });
+
+        // toolbar click handlers (delegated)
+        toolbar.addEventListener('mousedown', function(e) {
+          e.preventDefault(); // prevent focus loss
+          e.stopPropagation();
+        });
+
+        toolbar.addEventListener('click', function(e) {
+          var target = e.target;
+
+          // "Add Keyword Link" → show URL input
+          if (target.id === 'ed-link') {
+            toolbar.innerHTML = '<input type="url" id="ed-url" value="https://www.dentalkart.com/" placeholder="https://www.dentalkart.com/c/..." /><button class="primary" id="ed-confirm">Link</button><button id="ed-cancel">Esc</button>';
+            toolbar.className = 'show';
+            var inp = document.getElementById('ed-url');
+            if (inp) { inp.focus(); inp.select(); }
+            return;
+          }
+
+          // "Link" → apply link
+          if (target.id === 'ed-confirm') {
+            var url = document.getElementById('ed-url').value.trim();
+            if (!url || !savedRange) return;
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(savedRange);
+
+            var link = document.createElement('a');
+            link.href = url;
+            link.className = 'keyword-highlight';
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            try { savedRange.surroundContents(link); }
+            catch(ex) {
+              var frag = savedRange.extractContents();
+              link.appendChild(frag);
+              savedRange.insertNode(link);
+            }
+            var xbtn = document.createElement('span');
+            xbtn.className = 'kw-x';
+            xbtn.textContent = '\\u00d7';
+            xbtn.setAttribute('contenteditable', 'false');
+            link.appendChild(xbtn);
+
+            sel.removeAllRanges();
+            toolbar.className = '';
+            toolbar.innerHTML = '';
+            savedRange = null;
+            notify('changed');
+            notify('keywords-changed');
+            return;
+          }
+
+          // "Unlink" → remove keyword link
+          if (target.id === 'ed-unlink') {
+            if (activeKw && activeKw.parentNode) {
+              var txt = document.createTextNode(getLinkText(activeKw));
+              activeKw.parentNode.replaceChild(txt, activeKw);
+              activeKw = null;
+              toolbar.className = '';
+              toolbar.innerHTML = '';
+              savedRange = null;
+              notify('changed');
+              notify('keywords-changed');
+            }
+            return;
+          }
+
+          // "Esc"
+          if (target.id === 'ed-cancel') {
+            toolbar.className = '';
+            toolbar.innerHTML = '';
+            return;
+          }
+        });
+
+        // Enter in URL input → confirm
+        toolbar.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' && e.target.id === 'ed-url') {
+            document.getElementById('ed-confirm').click();
+          }
+          if (e.key === 'Escape') {
+            toolbar.className = '';
+            toolbar.innerHTML = '';
+          }
+        });
+
+        // mousedown outside toolbar → hide
+        document.addEventListener('mousedown', function(e) {
+          if (!toolbar.contains(e.target)) {
+            toolbar.className = '';
+            toolbar.innerHTML = '';
+          }
+        });
+
+        notify('ready');
+        notify('keywords-changed');
+      })();
+      </script>
+    `;
+
+    // Inject CSS into <head>, toolbar+script into <body>
+    return htmlContent
+      .replace("</head>", editorCSS + "</head>")
+      .replace("</body>", toolbarHtml + editorScript + "</body>");
   }, [htmlContent]);
 
-  // rescan keywords
+  // ── Listen for messages from iframe ──
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.source !== "blog-editor") return;
+      if (e.data.type === "changed") {
+        setHasChanges(true);
+        setSaveStatus(null);
+      }
+      if (e.data.type === "keywords-changed") {
+        setTimeout(() => scanKeywords(), 50);
+      }
+      if (e.data.type === "ready") {
+        setReady(true);
+        scanKeywords();
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [scanKeywords]);
+
+  // auto-resize iframe
   useEffect(() => {
     if (!ready) return;
-    scanKeywords();
+    const iframe = iframeRef.current;
     const d = getDoc();
-    if (!d?.body) return;
-    const obs = new MutationObserver(() => scanKeywords());
-    obs.observe(d.body, { childList: true, subtree: true });
+    if (!iframe || !d?.body) return;
+    const resize = () => {
+      iframe.style.height = `${Math.max(d.body.scrollHeight + 60, 600)}px`;
+    };
+    resize();
+    const obs = new MutationObserver(resize);
+    obs.observe(d.body, { childList: true, subtree: true, characterData: true });
     return () => obs.disconnect();
-  }, [ready, scanKeywords]);
+  }, [ready]);
 
-  // ── toolbar actions ────────────────────────────────────
-
-  // Restore saved selection inside iframe
-  const restoreSelection = useCallback(() => {
-    const d = getDoc();
-    const range = savedRangeRef.current;
-    if (!d || !range) return false;
-    const sel = d.getSelection();
-    if (!sel) return false;
-    sel.removeAllRanges();
-    sel.addRange(range);
-    return true;
-  }, []);
-
-  const handleAddLink = useCallback(() => {
-    setToolbarMode("url-input");
-    setUrlValue("https://www.dentalkart.com/");
-    setTimeout(() => urlInputRef.current?.focus(), 50);
-  }, []);
-
-  const handleConfirmLink = useCallback(() => {
-    const d = getDoc();
-    if (!d || !urlValue.trim()) return;
-
-    // Restore the saved selection
-    if (!restoreSelection()) return;
-    const sel = d.getSelection();
-    if (!sel || sel.isCollapsed) return;
-
-    const range = sel.getRangeAt(0);
-    const link = d.createElement("a");
-    link.href = urlValue.trim();
-    link.className = "keyword-highlight";
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-
-    try {
-      range.surroundContents(link);
-    } catch {
-      const fragment = range.extractContents();
-      link.appendChild(fragment);
-      range.insertNode(link);
-    }
-
-    // Add x button
-    const btn = d.createElement("span");
-    btn.className = "kw-x";
-    btn.textContent = "\u00d7";
-    btn.setAttribute("contenteditable", "false");
-    link.appendChild(btn);
-
-    sel.removeAllRanges();
-    savedRangeRef.current = null;
-    setShowToolbar(false);
-    setToolbarMode("link");
-    setHasChanges(true);
-    setSaveStatus(null);
-  }, [urlValue, restoreSelection]);
-
-  const handleUnlink = useCallback(() => {
-    const d = getDoc();
-    const kw = activeKwRef.current;
-    if (!d || !kw?.parentNode) return;
-    const txt = d.createTextNode(getLinkText(kw));
-    kw.parentNode.replaceChild(txt, kw);
-    activeKwRef.current = null;
-    savedRangeRef.current = null;
-    setShowToolbar(false);
-    setToolbarMode("link");
-    setHasChanges(true);
-    setSaveStatus(null);
-  }, []);
-
+  // ── actions from parent ──
   const removeKeyword = useCallback((index: number) => {
     const d = getDoc();
     if (!d) return;
@@ -307,7 +371,8 @@ export default function BlogEditor({
     link.parentNode.replaceChild(d.createTextNode(getLinkText(link)), link);
     setHasChanges(true);
     setSaveStatus(null);
-  }, []);
+    scanKeywords();
+  }, [scanKeywords]);
 
   const scrollToKeyword = useCallback((index: number) => {
     const d = getDoc();
@@ -346,10 +411,10 @@ export default function BlogEditor({
     }
   }, [blogId, getCleanBody, onSave]);
 
-  // ── render ─────────────────────────────────────────────
+  // ── render ──
   return (
     <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-      {/* Sticky toolbar */}
+      {/* Sticky bar */}
       <div className="sticky top-0 z-40 bg-white border-b">
         <div className="p-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -401,52 +466,10 @@ export default function BlogEditor({
         </div>
       </div>
 
-      {/* Floating toolbar */}
-      {showToolbar && (
-        <div
-          className="fixed z-[9999] bg-gray-900 text-white rounded-xl shadow-2xl px-3 py-2 flex items-center gap-2"
-          style={{ top: toolbarPos.top, left: toolbarPos.left }}
-        >
-          {toolbarMode === "url-input" ? (
-            <div className="flex items-center gap-2">
-              <input
-                ref={urlInputRef}
-                type="url"
-                value={urlValue}
-                onChange={(e) => setUrlValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleConfirmLink();
-                  if (e.key === "Escape") { setToolbarMode("link"); setShowToolbar(false); }
-                }}
-                placeholder="https://www.dentalkart.com/c/..."
-                className="bg-gray-800 text-white text-xs px-2.5 py-1.5 rounded w-72 border border-gray-600 focus:outline-none focus:border-blue-400"
-              />
-              <button onMouseDown={(e) => { e.preventDefault(); handleConfirmLink(); }} className="bg-blue-500 text-white text-xs px-3 py-1.5 rounded hover:bg-blue-600 font-semibold whitespace-nowrap">
-                Link
-              </button>
-              <button onMouseDown={(e) => { e.preventDefault(); setToolbarMode("link"); setShowToolbar(false); }} className="text-gray-400 hover:text-white text-xs">
-                Esc
-              </button>
-            </div>
-          ) : toolbarMode === "unlink" ? (
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-gray-400 mr-1">Keyword linked</span>
-              <button onMouseDown={(e) => { e.preventDefault(); handleUnlink(); }} className="bg-red-500 text-white text-xs px-3 py-1.5 rounded hover:bg-red-600 font-semibold whitespace-nowrap">
-                Unlink
-              </button>
-            </div>
-          ) : (
-            <button onMouseDown={(e) => { e.preventDefault(); handleAddLink(); }} className="text-xs px-2 py-1 hover:bg-gray-700 rounded font-medium">
-              + Add Keyword Link
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Editable iframe */}
+      {/* Iframe with toolbar inside it */}
       <iframe
         ref={iframeRef}
-        srcDoc={htmlContent}
+        srcDoc={buildEditorHtml()}
         className="w-full border-0 block"
         style={{ minHeight: "600px" }}
         title="Blog editor"
