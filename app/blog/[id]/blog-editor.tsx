@@ -26,15 +26,7 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
 
   const getDoc = () => iframeRef.current?.contentDocument ?? null;
 
-  const getLinkText = (el: Element) => {
-    let t = "";
-    el.childNodes.forEach((n) => {
-      if (n.nodeType === Node.TEXT_NODE) t += n.textContent;
-      else if (n.nodeType === Node.ELEMENT_NODE && !(n as HTMLElement).classList.contains("kw-x"))
-        t += n.textContent;
-    });
-    return t.trim();
-  };
+  const getLinkText = (el: Element) => (el.textContent || "").trim();
 
   const scanKeywords = useCallback(() => {
     const d = getDoc();
@@ -51,7 +43,7 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
     const d = getDoc();
     if (!d?.body) return "";
     const clone = d.body.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll(".kw-x, #ed-toolbar").forEach((b) => b.remove());
+    clone.querySelectorAll("#ed-toolbar").forEach((b) => b.remove());
     return clone.innerHTML;
   }, []);
 
@@ -77,14 +69,7 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
         }
         .cta-banner, .cta-banner * { font-family: inherit; color: inherit; }
 
-        a.keyword-highlight { position: relative !important; cursor: text !important; display: inline-block !important; }
-        a.keyword-highlight .kw-x {
-          display:none; position:absolute; top:-10px; right:-10px;
-          width:22px; height:22px; background:#ef4444; color:#fff;
-          border-radius:50%; font-size:14px; line-height:22px; text-align:center;
-          cursor:pointer; z-index:100; box-shadow:0 2px 6px rgba(0,0,0,.3); user-select:none;
-        }
-        a.keyword-highlight:hover .kw-x { display:block; }
+        a.keyword-highlight { cursor: text !important; }
         a.keyword-highlight:hover { outline:2px solid #3b82f6 !important; outline-offset:2px !important; border-radius:4px; }
 
         #ed-toolbar {
@@ -132,29 +117,6 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
         var savedRange = null;
         var activeKw = null;
 
-        // inject x buttons on keyword links
-        function injectXButtons() {
-          document.querySelectorAll('a.keyword-highlight').forEach(function(el) {
-            if (el.querySelector('.kw-x')) return;
-            var btn = document.createElement('span');
-            btn.className = 'kw-x';
-            btn.textContent = '\\u00d7';
-            btn.setAttribute('contenteditable', 'false');
-            el.appendChild(btn);
-          });
-        }
-        injectXButtons();
-
-        function getLinkText(el) {
-          var t = '';
-          el.childNodes.forEach(function(n) {
-            if (n.nodeType === Node.TEXT_NODE) t += n.textContent;
-            else if (n.nodeType === Node.ELEMENT_NODE && !n.classList.contains('kw-x'))
-              t += n.textContent;
-          });
-          return t.trim();
-        }
-
         function notify(type, data) {
           window.parent.postMessage({ source: 'blog-editor', type: type, data: data }, '*');
         }
@@ -164,22 +126,9 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
           notify('changed');
         });
 
-        // click: x button or prevent nav
+        // prevent link navigation in edit mode
         document.addEventListener('click', function(e) {
-          var target = e.target;
-          if (target.classList && target.classList.contains('kw-x')) {
-            e.preventDefault();
-            e.stopPropagation();
-            var link = target.closest('a.keyword-highlight');
-            if (link && link.parentNode) {
-              var txt = document.createTextNode(getLinkText(link));
-              link.parentNode.replaceChild(txt, link);
-              notify('changed');
-              notify('keywords-changed');
-            }
-            return;
-          }
-          var a = target.closest ? target.closest('a') : null;
+          var a = e.target.closest ? e.target.closest('a') : null;
           if (a) e.preventDefault();
         });
 
@@ -260,12 +209,6 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
               link.appendChild(frag);
               savedRange.insertNode(link);
             }
-            var xbtn = document.createElement('span');
-            xbtn.className = 'kw-x';
-            xbtn.textContent = '\\u00d7';
-            xbtn.setAttribute('contenteditable', 'false');
-            link.appendChild(xbtn);
-
             sel.removeAllRanges();
             toolbar.className = '';
             toolbar.innerHTML = '';
@@ -278,7 +221,7 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
           // "Unlink" → remove keyword link
           if (target.id === 'ed-unlink') {
             if (activeKw && activeKw.parentNode) {
-              var txt = document.createTextNode(getLinkText(activeKw));
+              var txt = document.createTextNode(activeKw.textContent || '');
               activeKw.parentNode.replaceChild(txt, activeKw);
               activeKw = null;
               toolbar.className = '';
