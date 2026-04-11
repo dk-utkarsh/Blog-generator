@@ -24,336 +24,243 @@ export default function BlogEditor({
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [keywords, setKeywords] = useState<KeywordLink[]>([]);
-  const [iframeReady, setIframeReady] = useState(false);
+  const [ready, setReady] = useState(false);
 
-  // Floating toolbar
+  // Toolbar state
   const [showToolbar, setShowToolbar] = useState(false);
   const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0 });
-  const [toolbarMode, setToolbarMode] = useState<"link" | "unlink" | "url-input">("link");
+  const [toolbarMode, setToolbarMode] = useState<
+    "link" | "unlink" | "url-input"
+  >("link");
   const [urlValue, setUrlValue] = useState("https://www.dentalkart.com/");
-  const [activeKeywordEl, setActiveKeywordEl] = useState<HTMLAnchorElement | null>(null);
+  const activeKwRef = useRef<HTMLAnchorElement | null>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
 
-  const getDoc = useCallback(() => {
-    return iframeRef.current?.contentDocument || null;
-  }, []);
+  // ── helpers ──────────────────────────────────────────────
+  const doc = () => iframeRef.current?.contentDocument ?? null;
 
-  // Scan keyword links
+  const getLinkText = (el: Element) => {
+    let t = "";
+    el.childNodes.forEach((n) => {
+      if (n.nodeType === Node.TEXT_NODE) t += n.textContent;
+      else if (
+        n.nodeType === Node.ELEMENT_NODE &&
+        !(n as HTMLElement).classList.contains("kw-x")
+      )
+        t += n.textContent;
+    });
+    return t.trim();
+  };
+
   const scanKeywords = useCallback(() => {
-    const doc = getDoc();
-    if (!doc) return;
-    const links = doc.querySelectorAll("a.keyword-highlight");
+    const d = doc();
+    if (!d) return;
     const kws: KeywordLink[] = [];
-    links.forEach((el, i) => {
-      const a = el as HTMLAnchorElement;
-      // Get text without the remove button text
-      let text = "";
-      a.childNodes.forEach((n) => {
-        if (n.nodeType === Node.TEXT_NODE) text += n.textContent;
-        else if (
-          n.nodeType === Node.ELEMENT_NODE &&
-          !(n as HTMLElement).classList.contains("kw-x")
-        )
-          text += n.textContent;
-      });
-      text = text.trim();
-      if (text) kws.push({ text, url: a.href, index: i });
+    d.querySelectorAll("a.keyword-highlight").forEach((el, i) => {
+      const text = getLinkText(el);
+      if (text) kws.push({ text, url: (el as HTMLAnchorElement).href, index: i });
     });
     setKeywords(kws);
-  }, [getDoc]);
+  }, []);
 
-  // Get clean body HTML (strips editor artifacts)
-  const getCleanBodyHtml = useCallback(() => {
-    const doc = getDoc();
-    if (!doc?.body) return "";
-    const clone = doc.body.cloneNode(true) as HTMLElement;
-    // Remove all injected remove buttons
+  const getCleanBody = useCallback(() => {
+    const d = doc();
+    if (!d?.body) return "";
+    const clone = d.body.cloneNode(true) as HTMLElement;
     clone.querySelectorAll(".kw-x").forEach((b) => b.remove());
     return clone.innerHTML;
-  }, [getDoc]);
+  }, []);
 
-  // Inject remove buttons into keyword links
   const injectRemoveButtons = useCallback(() => {
-    const doc = getDoc();
-    if (!doc) return;
-    doc.querySelectorAll("a.keyword-highlight").forEach((el) => {
+    const d = doc();
+    if (!d) return;
+    d.querySelectorAll("a.keyword-highlight").forEach((el) => {
       if (el.querySelector(".kw-x")) return;
-      const btn = doc.createElement("span");
+      const btn = d.createElement("span");
       btn.className = "kw-x";
       btn.textContent = "\u00d7";
       btn.setAttribute("contenteditable", "false");
       el.appendChild(btn);
     });
-  }, [getDoc]);
+  }, []);
 
-  // Remove a keyword link by index
-  const removeKeyword = useCallback(
-    (index: number) => {
-      const doc = getDoc();
-      if (!doc) return;
-      const links = doc.querySelectorAll("a.keyword-highlight");
-      const link = links[index] as HTMLAnchorElement;
-      if (!link || !link.parentNode) return;
-      // Get text without remove button
-      let text = "";
-      link.childNodes.forEach((n) => {
-        if (n.nodeType === Node.TEXT_NODE) text += n.textContent;
-        else if (
-          n.nodeType === Node.ELEMENT_NODE &&
-          !(n as HTMLElement).classList.contains("kw-x")
-        )
-          text += n.textContent;
-      });
-      const textNode = doc.createTextNode(text.trim());
-      link.parentNode.replaceChild(textNode, link);
-      setHasChanges(true);
-      setSaveStatus(null);
-      scanKeywords();
-    },
-    [getDoc, scanKeywords]
-  );
+  // ── iframe init via useEffect (stable, runs once) ──────
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
 
-  // Scroll to keyword
-  const scrollToKeyword = useCallback(
-    (index: number) => {
-      const doc = getDoc();
-      if (!doc) return;
-      const links = doc.querySelectorAll("a.keyword-highlight");
-      const el = links[index] as HTMLElement;
-      if (!el) return;
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.style.outline = "3px solid #f59e0b";
-      el.style.outlineOffset = "3px";
-      setTimeout(() => {
-        el.style.outline = "";
-        el.style.outlineOffset = "";
-      }, 2000);
-    },
-    [getDoc]
-  );
+    const onLoad = () => {
+      const d = iframe.contentDocument;
+      if (!d?.body) return;
 
-  // Initialize editable iframe
-  const handleIframeLoad = useCallback(() => {
-    const doc = getDoc();
-    if (!doc?.body) return;
+      d.body.contentEditable = "true";
+      d.body.style.outline = "none";
+      d.execCommand("defaultParagraphSeparator", false, "p");
 
-    doc.body.contentEditable = "true";
-    doc.body.style.outline = "none";
-
-    // Use <p> tags on Enter instead of <div>
-    doc.execCommand("defaultParagraphSeparator", false, "p");
-
-    // Editor styles — ensure new typed content inherits blog fonts/colors
-    const s = doc.createElement("style");
-    s.textContent = `
-      body { min-height: 600px; }
-      body:focus { outline: none !important; }
-
-      /* Inherit blog styles for newly typed content */
-      .hero, .hero * {
-        font-family: inherit;
-        color: inherit;
-      }
-      .toc li {
-        color: var(--dk-blue);
-        font-weight: 600;
-        font-size: 16px;
-      }
-      .section h2, .section h2 * {
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        color: var(--dk-dark, #1a1a2e);
-      }
-      .section-content, .section-content div, .section-content p, .section-content span {
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        font-size: 16px;
-        line-height: 1.7;
-        color: #333;
-      }
-      .blog-content, .blog-content div, .blog-content p {
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        line-height: 1.7;
-        color: #333;
-      }
-      .faq-question, .faq-question * {
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        color: var(--dk-dark, #1a1a2e);
-      }
-      .faq-answer, .faq-answer div, .faq-answer p, .faq-answer span {
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        font-size: 16px;
-        line-height: 1.7;
-        color: #333;
-      }
-      .cta-banner, .cta-banner * {
-        font-family: inherit;
-        color: inherit;
-      }
-
-      a.keyword-highlight {
-        position: relative !important;
-        cursor: text !important;
-      }
-      a.keyword-highlight .kw-x {
-        display: none;
-        position: absolute;
-        top: -10px;
-        right: -10px;
-        width: 22px;
-        height: 22px;
-        background: #ef4444;
-        color: white;
-        border-radius: 50%;
-        font-size: 14px;
-        line-height: 22px;
-        text-align: center;
-        cursor: pointer;
-        z-index: 100;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        user-select: none;
-      }
-      a.keyword-highlight:hover .kw-x {
-        display: block;
-      }
-      a.keyword-highlight:hover {
-        outline: 2px solid #3b82f6 !important;
-        outline-offset: 2px !important;
-        border-radius: 4px;
-      }
-    `;
-    doc.head.appendChild(s);
-
-    // Inject remove buttons
-    injectRemoveButtons();
-
-    // Track changes
-    doc.body.addEventListener("input", () => {
-      setHasChanges(true);
-      setSaveStatus(null);
-      // Re-scan after edits (user might delete a keyword link by editing)
-      setTimeout(() => scanKeywords(), 100);
-    });
-
-    // Handle clicks: remove buttons & prevent link navigation
-    doc.addEventListener("click", (e) => {
-      const target = e.target as HTMLElement;
-
-      // Remove button clicked
-      if (target.classList.contains("kw-x")) {
-        e.preventDefault();
-        e.stopPropagation();
-        const link = target.closest("a.keyword-highlight");
-        if (link && link.parentNode) {
-          let text = "";
-          link.childNodes.forEach((n) => {
-            if (n.nodeType === Node.TEXT_NODE) text += n.textContent;
-            else if (
-              n.nodeType === Node.ELEMENT_NODE &&
-              !(n as HTMLElement).classList.contains("kw-x")
-            )
-              text += n.textContent;
-          });
-          const textNode = doc.createTextNode(text.trim());
-          link.parentNode.replaceChild(textNode, link);
-          setHasChanges(true);
-          setSaveStatus(null);
-          scanKeywords();
+      // inject editor CSS
+      const style = d.createElement("style");
+      style.textContent = `
+        body { min-height: 600px; }
+        body:focus { outline: none !important; }
+        .hero, .hero * { font-family: inherit; color: inherit; }
+        .toc li { color: var(--dk-blue); font-weight: 600; font-size: 16px; }
+        .section h2, .section h2 * { font-family: 'Inter',system-ui,sans-serif; color: var(--dk-dark,#1a1a2e); }
+        .section-content, .section-content div, .section-content p, .section-content span {
+          font-family: 'Inter',system-ui,sans-serif; font-size:16px; line-height:1.7; color:#333;
         }
-        return;
-      }
+        .blog-content, .blog-content div, .blog-content p {
+          font-family: 'Inter',system-ui,sans-serif; line-height:1.7; color:#333;
+        }
+        .faq-question, .faq-question * { font-family: 'Inter',system-ui,sans-serif; color: var(--dk-dark,#1a1a2e); }
+        .faq-answer, .faq-answer div, .faq-answer p, .faq-answer span {
+          font-family: 'Inter',system-ui,sans-serif; font-size:16px; line-height:1.7; color:#333;
+        }
+        .cta-banner, .cta-banner * { font-family: inherit; color: inherit; }
+        a.keyword-highlight { position: relative !important; cursor: text !important; }
+        a.keyword-highlight .kw-x {
+          display:none; position:absolute; top:-10px; right:-10px;
+          width:22px; height:22px; background:#ef4444; color:#fff;
+          border-radius:50%; font-size:14px; line-height:22px; text-align:center;
+          cursor:pointer; z-index:100; box-shadow:0 2px 6px rgba(0,0,0,.3); user-select:none;
+        }
+        a.keyword-highlight:hover .kw-x { display:block; }
+        a.keyword-highlight:hover { outline:2px solid #3b82f6 !important; outline-offset:2px !important; border-radius:4px; }
+      `;
+      d.head.appendChild(style);
 
-      // Prevent link navigation
-      const anchor = target.closest("a");
-      if (anchor) e.preventDefault();
-    });
+      // inject remove buttons
+      d.querySelectorAll("a.keyword-highlight").forEach((el) => {
+        if (el.querySelector(".kw-x")) return;
+        const btn = d.createElement("span");
+        btn.className = "kw-x";
+        btn.textContent = "\u00d7";
+        btn.setAttribute("contenteditable", "false");
+        el.appendChild(btn);
+      });
 
-    // Selection toolbar — detect if selection is on a keyword link
-    doc.addEventListener("mouseup", () => {
-      setTimeout(() => {
-        const sel = doc.getSelection();
-        if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
+      // input → mark dirty
+      d.body.addEventListener("input", () => {
+        setHasChanges(true);
+        setSaveStatus(null);
+      });
+
+      // click: remove-btn or prevent navigation
+      d.addEventListener("click", (e) => {
+        const target = e.target as HTMLElement;
+        if (target.classList.contains("kw-x")) {
+          e.preventDefault();
+          e.stopPropagation();
+          const link = target.closest("a.keyword-highlight");
+          if (link?.parentNode) {
+            const txt = d.createTextNode(getLinkText(link));
+            link.parentNode.replaceChild(txt, link);
+            setHasChanges(true);
+            setSaveStatus(null);
+          }
+          return;
+        }
+        const a = target.closest("a");
+        if (a) e.preventDefault();
+      });
+
+      // mouseup → show toolbar
+      d.addEventListener("mouseup", () => {
+        setTimeout(() => {
+          const sel = d.getSelection();
+          if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+            setShowToolbar(false);
+            setToolbarMode("link");
+            activeKwRef.current = null;
+            return;
+          }
           const range = sel.getRangeAt(0);
           const rect = range.getBoundingClientRect();
-          const iframeRect = iframeRef.current!.getBoundingClientRect();
+          if (rect.width === 0) {
+            setShowToolbar(false);
+            return;
+          }
+          const iRect = iframe.getBoundingClientRect();
+          const scrollY = iframe.contentWindow?.scrollY || 0;
+
           setToolbarPos({
-            top:
-              iframeRect.top +
-              rect.top -
-              52 -
-              (iframeRef.current!.contentWindow?.scrollY || 0) +
-              window.scrollY,
+            top: iRect.top + rect.top - scrollY - 52 + window.scrollY,
             left: Math.max(
-              iframeRect.left + 10,
+              iRect.left + 10,
               Math.min(
-                iframeRect.left + rect.left + rect.width / 2 - 110,
-                iframeRect.right - 280
+                iRect.left + rect.left + rect.width / 2 - 110,
+                iRect.right - 280
               )
             ),
           });
 
-          // Check if selection is inside a keyword link
-          const anchorNode = sel.anchorNode;
-          const parentEl = anchorNode?.nodeType === Node.TEXT_NODE
-            ? anchorNode.parentElement
-            : anchorNode as HTMLElement;
-          const kwLink = parentEl?.closest("a.keyword-highlight") as HTMLAnchorElement | null;
+          // check if selection is on a keyword
+          const node = sel.anchorNode;
+          const parent =
+            node?.nodeType === Node.TEXT_NODE
+              ? node.parentElement
+              : (node as HTMLElement);
+          const kw = parent?.closest(
+            "a.keyword-highlight"
+          ) as HTMLAnchorElement | null;
 
-          if (kwLink) {
-            setActiveKeywordEl(kwLink);
+          if (kw) {
+            activeKwRef.current = kw;
             setToolbarMode("unlink");
           } else {
-            setActiveKeywordEl(null);
+            activeKwRef.current = null;
             setToolbarMode("link");
           }
           setShowToolbar(true);
-        } else {
-          setShowToolbar(false);
-          setToolbarMode("link");
-          setActiveKeywordEl(null);
-        }
-      }, 10);
-    });
+        }, 10);
+      });
 
-    setIframeReady(true);
+      // auto-resize
+      const resize = () => {
+        if (iframe && d.body)
+          iframe.style.height = `${Math.max(d.body.scrollHeight + 40, 600)}px`;
+      };
+      resize();
+      const obs = new MutationObserver(resize);
+      obs.observe(d.body, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+
+      setReady(true);
+    };
+
+    iframe.addEventListener("load", onLoad);
+    return () => iframe.removeEventListener("load", onLoad);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [htmlContent]);
+
+  // re-scan keywords when ready or after mutations
+  useEffect(() => {
+    if (!ready) return;
     scanKeywords();
-  }, [getDoc, injectRemoveButtons, scanKeywords]);
+    const d = doc();
+    if (!d?.body) return;
+    const obs = new MutationObserver(() => scanKeywords());
+    obs.observe(d.body, { childList: true, subtree: true });
+    return () => obs.disconnect();
+  }, [ready, scanKeywords]);
 
-  // Add keyword link
+  // ── actions ────────────────────────────────────────────
   const handleAddLink = useCallback(() => {
     setToolbarMode("url-input");
     setUrlValue("https://www.dentalkart.com/");
     setTimeout(() => urlInputRef.current?.focus(), 50);
   }, []);
 
-  // Unlink — convert keyword back to normal text
-  const handleUnlink = useCallback(() => {
-    const doc = getDoc();
-    if (!doc || !activeKeywordEl || !activeKeywordEl.parentNode) return;
-    let text = "";
-    activeKeywordEl.childNodes.forEach((n) => {
-      if (n.nodeType === Node.TEXT_NODE) text += n.textContent;
-      else if (
-        n.nodeType === Node.ELEMENT_NODE &&
-        !(n as HTMLElement).classList.contains("kw-x")
-      )
-        text += n.textContent;
-    });
-    const textNode = doc.createTextNode(text.trim());
-    activeKeywordEl.parentNode.replaceChild(textNode, activeKeywordEl);
-    setShowToolbar(false);
-    setActiveKeywordEl(null);
-    setHasChanges(true);
-    setSaveStatus(null);
-    scanKeywords();
-  }, [getDoc, activeKeywordEl, scanKeywords]);
-
   const handleConfirmLink = useCallback(() => {
-    const doc = getDoc();
-    if (!doc) return;
-    const sel = doc.getSelection();
+    const d = doc();
+    if (!d) return;
+    const sel = d.getSelection();
     if (!sel || sel.isCollapsed || !urlValue.trim()) return;
 
     const range = sel.getRangeAt(0);
-    const link = doc.createElement("a");
+    const link = d.createElement("a");
     link.href = urlValue.trim();
     link.className = "keyword-highlight";
     link.target = "_blank";
@@ -367,8 +274,7 @@ export default function BlogEditor({
       range.insertNode(link);
     }
 
-    // Inject remove button on new link
-    const btn = doc.createElement("span");
+    const btn = d.createElement("span");
     btn.className = "kw-x";
     btn.textContent = "\u00d7";
     btn.setAttribute("contenteditable", "false");
@@ -379,27 +285,63 @@ export default function BlogEditor({
     setToolbarMode("link");
     setHasChanges(true);
     setSaveStatus(null);
-    scanKeywords();
-  }, [urlValue, getDoc, scanKeywords]);
+  }, [urlValue]);
 
-  // Save
+  const handleUnlink = useCallback(() => {
+    const d = doc();
+    const kw = activeKwRef.current;
+    if (!d || !kw?.parentNode) return;
+    const txt = d.createTextNode(getLinkText(kw));
+    kw.parentNode.replaceChild(txt, kw);
+    activeKwRef.current = null;
+    setShowToolbar(false);
+    setToolbarMode("link");
+    setHasChanges(true);
+    setSaveStatus(null);
+  }, []);
+
+  const removeKeyword = useCallback((index: number) => {
+    const d = doc();
+    if (!d) return;
+    const links = d.querySelectorAll("a.keyword-highlight");
+    const link = links[index];
+    if (!link?.parentNode) return;
+    const txt = d.createTextNode(getLinkText(link));
+    link.parentNode.replaceChild(txt, link);
+    setHasChanges(true);
+    setSaveStatus(null);
+  }, []);
+
+  const scrollToKeyword = useCallback((index: number) => {
+    const d = doc();
+    if (!d) return;
+    const el = d.querySelectorAll("a.keyword-highlight")[index] as HTMLElement;
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.style.outline = "3px solid #f59e0b";
+    el.style.outlineOffset = "3px";
+    setTimeout(() => {
+      el.style.outline = "";
+      el.style.outlineOffset = "";
+    }, 2000);
+  }, []);
+
   const handleSave = useCallback(async () => {
-    const bodyHtml = getCleanBodyHtml();
-    if (!bodyHtml) return;
+    const body = getCleanBody();
+    if (!body) return;
     setSaving(true);
     setSaveStatus(null);
-
     try {
       const res = await fetch(`/api/blog/${blogId}/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ htmlContent: bodyHtml }),
+        body: JSON.stringify({ htmlContent: body }),
       });
       const data = await res.json();
       if (data.success) {
         setHasChanges(false);
         setSaveStatus(`Saved (${data.wordCount} words)`);
-        onSave(bodyHtml);
+        onSave(body);
       } else {
         setSaveStatus(`Error: ${data.error}`);
       }
@@ -410,28 +352,13 @@ export default function BlogEditor({
     } finally {
       setSaving(false);
     }
-  }, [blogId, getCleanBodyHtml, onSave]);
+  }, [blogId, getCleanBody, onSave]);
 
-  // Auto-resize iframe
-  useEffect(() => {
-    if (!iframeReady) return;
-    const doc = getDoc();
-    if (!doc?.body) return;
-    const resize = () => {
-      if (iframeRef.current && doc.body) {
-        iframeRef.current.style.height = `${Math.max(doc.body.scrollHeight + 40, 600)}px`;
-      }
-    };
-    resize();
-    const obs = new MutationObserver(resize);
-    obs.observe(doc.body, { childList: true, subtree: true, characterData: true });
-    return () => obs.disconnect();
-  }, [iframeReady, getDoc]);
-
+  // ── render ─────────────────────────────────────────────
   return (
-    <div className="bg-white rounded-lg border shadow-sm">
+    <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
       {/* Sticky toolbar */}
-      <div className="sticky top-0 z-40 bg-white border-b rounded-t-lg">
+      <div className="sticky top-0 z-40 bg-white border-b">
         <div className="p-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-400" />
@@ -507,11 +434,10 @@ export default function BlogEditor({
           </div>
         )}
 
-        {/* Help */}
         <div className="px-3 py-2 border-t bg-gray-50 text-xs text-gray-400 flex gap-4">
           <span>Click text to edit</span>
-          <span>Select text + toolbar to add keyword</span>
-          <span>Hover keyword for remove button</span>
+          <span>Select text to add keyword link</span>
+          <span>Hover keyword to remove</span>
         </div>
       </div>
 
@@ -560,7 +486,9 @@ export default function BlogEditor({
             </div>
           ) : toolbarMode === "unlink" ? (
             <div className="flex items-center gap-1">
-              <span className="text-xs text-gray-400 mr-1">Keyword linked</span>
+              <span className="text-xs text-gray-400 mr-1">
+                Keyword linked
+              </span>
               <button
                 onMouseDown={(e) => {
                   e.preventDefault();
@@ -589,8 +517,7 @@ export default function BlogEditor({
       <iframe
         ref={iframeRef}
         srcDoc={htmlContent}
-        onLoad={handleIframeLoad}
-        className="w-full border-0"
+        className="w-full border-0 block"
         style={{ minHeight: "600px" }}
         title="Blog editor"
       />

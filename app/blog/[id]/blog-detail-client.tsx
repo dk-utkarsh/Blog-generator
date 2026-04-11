@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import CopyButtons from "./copy-buttons";
 import BlogEditor from "./blog-editor";
 import FeaturedImagePreview from "./featured-image-preview";
@@ -28,6 +28,7 @@ export default function BlogDetailClient({
 }: BlogDetailClientProps) {
   const [mode, setMode] = useState<"preview" | "edit">("preview");
   const [editedBodyHtml, setEditedBodyHtml] = useState<string | null>(null);
+  const previewRef = useRef<HTMLIFrameElement>(null);
   const baseUrl =
     typeof window !== "undefined"
       ? window.location.origin
@@ -45,6 +46,26 @@ export default function BlogDetailClient({
       `$1${editedBodyHtml}$3`
     );
   }, [htmlContent, editedBodyHtml]);
+
+  // Auto-resize preview iframe to fit content
+  useEffect(() => {
+    const iframe = previewRef.current;
+    if (!iframe || mode !== "preview") return;
+
+    const resizeIframe = () => {
+      try {
+        const doc = iframe.contentDocument;
+        if (doc?.body) {
+          iframe.style.height = `${Math.max(doc.body.scrollHeight + 40, 600)}px`;
+        }
+      } catch {
+        // cross-origin fallback
+      }
+    };
+
+    iframe.addEventListener("load", resizeIframe);
+    return () => iframe.removeEventListener("load", resizeIframe);
+  }, [mode, editedBodyHtml]);
 
   return (
     <>
@@ -98,19 +119,20 @@ export default function BlogDetailClient({
           onSave={handleSave}
         />
       ) : (
-        <div className="bg-white rounded-lg border">
+        <div className="bg-white rounded-lg border overflow-hidden">
           <div className="p-4 border-b flex items-center justify-between">
             <h3 className="font-semibold text-sm">Blog Preview</h3>
             <span className="text-xs text-gray-400">HTML output</span>
           </div>
           <iframe
+            ref={previewRef}
             key={editedBodyHtml ? "edited" : "original"}
             srcDoc={currentHtmlContent.replace(
               "<head>",
               `<head><base href="${baseUrl}/" />`
             )}
-            className="w-full border-0"
-            style={{ minHeight: "800px" }}
+            className="w-full border-0 block"
+            style={{ minHeight: "600px" }}
             title="Blog preview"
           />
         </div>
