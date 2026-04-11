@@ -16,6 +16,8 @@ interface BlogEditorProps {
 
 export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  // Store initial HTML so iframe never reloads after save
+  const initialHtmlRef = useRef(htmlContent);
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -322,10 +324,10 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
     `;
 
     // Inject CSS into <head>, toolbar+script into <body>
-    return htmlContent
+    return initialHtmlRef.current
       .replace("</head>", editorCSS + "</head>")
       .replace("</body>", toolbarHtml + editorScript + "</body>");
-  }, [htmlContent]);
+  }, []);
 
   // ── Listen for messages from iframe ──
   useEffect(() => {

@@ -115,7 +115,7 @@ export default function BlogDetailClient({
       {mode === "edit" ? (
         <BlogEditor
           blogId={blogId}
-          htmlContent={currentHtmlContent}
+          htmlContent={htmlContent}
           onSave={handleSave}
         />
       ) : (
