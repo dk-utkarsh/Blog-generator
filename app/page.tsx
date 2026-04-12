@@ -48,20 +48,18 @@ export default async function HomePage() {
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
               DentalKart Content Studio
             </div>
-            <div className="flex items-baseline gap-3 flex-wrap mb-2">
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900">
-                Research.
-              </h1>
-              <div className="relative h-14 md:h-16 w-[280px] md:w-[340px]">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900 leading-tight">
+              Research.{" "}
+              <span className="inline-block relative align-baseline w-[220px] md:w-[300px] h-[1.1em]">
                 <GooeyText
-                  texts={["Write", "Refine", "Publish", "Repeat"]}
+                  texts={["Write.", "Refine.", "Publish.", "Repeat."]}
                   morphTime={1}
                   cooldownTime={1.8}
-                  className="font-bold w-full h-full"
-                  textClassName="!text-left text-4xl md:text-5xl tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
+                  className="w-full h-full"
+                  textClassName="text-4xl md:text-5xl font-bold tracking-tight leading-none bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
                 />
-              </div>
-            </div>
+              </span>
+            </h1>
             <p className="text-base text-slate-600 mt-3 max-w-lg leading-relaxed">
               Clinically accurate dental content, ready to publish on{" "}
               <span className="font-semibold text-slate-900">DentalKart.com</span>{" "}
