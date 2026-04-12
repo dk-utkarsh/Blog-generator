@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLastBlogWithinHours, updateBlogStatus } from "@/lib/db/queries";
+import { getLastBlogWithinHours, pruneOldBlogs, updateBlogStatus } from "@/lib/db/queries";
 import { runResearch } from "@/lib/pipeline/01-research";
 import { generateTopic } from "@/lib/pipeline/02-topic";
 import { writeBlog } from "@/lib/pipeline/05-write-blog";
@@ -39,11 +39,18 @@ export async function GET(request: NextRequest) {
       research,
     });
 
+    // Keep only the 20 most recent blogs to stay within free DB limits
+    const pruned = await pruneOldBlogs(20);
+    if (pruned.deleted > 0) {
+      console.log(`[Generate] Pruned ${pruned.deleted} old blogs`);
+    }
+
     return NextResponse.json({
       success: true,
       blogId: result.blogId,
       title: result.title,
       wordCount: blogContent.wordCount,
+      prunedCount: pruned.deleted,
     });
   } catch (error) {
     console.error("Blog generation failed:", error);

@@ -44,3 +44,33 @@ export async function saveResearchSource(
 ) {
   await db.insert(researchSources).values(data);
 }
+
+/**
+ * Keep only the N most recent blogs. Delete older ones + their research sources.
+ * Called after each new blog is generated to stay within DB storage limits.
+ */
+export async function pruneOldBlogs(keep = 20) {
+  // Find blog IDs beyond the cutoff
+  const keepers = await db
+    .select({ id: blogs.id })
+    .from(blogs)
+    .orderBy(desc(blogs.createdAt))
+    .limit(keep);
+
+  if (keepers.length < keep) return { deleted: 0 };
+
+  const keeperIds = keepers.map((k) => k.id);
+
+  // Delete research_sources for old blogs
+  await db
+    .delete(researchSources)
+    .where(sql`${researchSources.blogId} NOT IN (${sql.join(keeperIds.map(id => sql`${id}`), sql`, `)})`);
+
+  // Delete old blogs
+  const result = await db
+    .delete(blogs)
+    .where(sql`${blogs.id} NOT IN (${sql.join(keeperIds.map(id => sql`${id}`), sql`, `)})`)
+    .returning({ id: blogs.id });
+
+  return { deleted: result.length };
+}
