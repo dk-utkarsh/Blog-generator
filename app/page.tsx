@@ -3,6 +3,7 @@ import { blogs } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import Link from "next/link";
 import GenerateButton from "./generate-button";
+import { GooeyText } from "@/components/ui/gooey-text-morphing";
 
 export const dynamic = "force-dynamic";
 
@@ -39,15 +40,34 @@ export default async function HomePage() {
 
   return (
     <div>
-      {/* Page header */}
-      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">Your Blogs</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Review, edit, and publish to DentalKart.com
-          </p>
+      {/* Hero section with gooey text animation */}
+      <div className="mb-8 relative overflow-hidden rounded-2xl bg-white/60 backdrop-blur-sm border border-slate-200/60 p-8">
+        <div className="flex items-center justify-between gap-6 flex-wrap">
+          <div className="flex-1 min-w-[300px]">
+            <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">
+              AI Blog Generator
+            </div>
+            <div className="h-20 flex items-start">
+              <GooeyText
+                texts={[
+                  "Create.",
+                  "Edit.",
+                  "Publish.",
+                  "Your Blogs.",
+                ]}
+                morphTime={1.2}
+                cooldownTime={1.5}
+                className="font-bold w-full"
+                textClassName="text-4xl md:text-5xl bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent"
+              />
+            </div>
+            <p className="text-sm text-slate-600 mt-4 max-w-lg">
+              Generate high-quality dental blog posts powered by AI. Review, refine,
+              and publish directly to DentalKart.com in minutes.
+            </p>
+          </div>
+          <GenerateButton />
         </div>
-        <GenerateButton />
       </div>
 
       {/* Stats bar */}
