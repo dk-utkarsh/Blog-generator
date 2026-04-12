@@ -116,6 +116,7 @@ export function GooeyText({
       >
         <span
           ref={text1Ref}
+          suppressHydrationWarning
           className={cn(
             "absolute left-0 top-0 inline-block select-none whitespace-nowrap",
             textClassName
@@ -123,6 +124,7 @@ export function GooeyText({
         />
         <span
           ref={text2Ref}
+          suppressHydrationWarning
           className={cn(
             "absolute left-0 top-0 inline-block select-none whitespace-nowrap",
             textClassName
