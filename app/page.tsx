@@ -40,30 +40,32 @@ export default async function HomePage() {
 
   return (
     <div>
-      {/* Hero section with gooey text animation */}
-      <div className="mb-8 relative overflow-hidden rounded-2xl bg-white/60 backdrop-blur-sm border border-slate-200/60 p-8">
-        <div className="flex items-center justify-between gap-6 flex-wrap">
+      {/* Hero section */}
+      <div className="mb-8 relative overflow-hidden rounded-2xl bg-white/70 backdrop-blur-sm border border-slate-200/60 p-10">
+        <div className="flex items-center justify-between gap-8 flex-wrap">
           <div className="flex-1 min-w-[300px]">
-            <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">
-              AI Blog Generator
+            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 uppercase tracking-wider mb-3 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+              DentalKart Content Studio
             </div>
-            <div className="h-20 flex items-start">
-              <GooeyText
-                texts={[
-                  "Create.",
-                  "Edit.",
-                  "Publish.",
-                  "Your Blogs.",
-                ]}
-                morphTime={1.2}
-                cooldownTime={1.5}
-                className="font-bold w-full"
-                textClassName="text-4xl md:text-5xl bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent"
-              />
+            <div className="flex items-baseline gap-3 flex-wrap mb-2">
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900">
+                Research.
+              </h1>
+              <div className="relative h-14 md:h-16 w-[280px] md:w-[340px]">
+                <GooeyText
+                  texts={["Write", "Refine", "Publish", "Repeat"]}
+                  morphTime={1}
+                  cooldownTime={1.8}
+                  className="font-bold w-full h-full"
+                  textClassName="!text-left text-4xl md:text-5xl tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
+                />
+              </div>
             </div>
-            <p className="text-sm text-slate-600 mt-4 max-w-lg">
-              Generate high-quality dental blog posts powered by AI. Review, refine,
-              and publish directly to DentalKart.com in minutes.
+            <p className="text-base text-slate-600 mt-3 max-w-lg leading-relaxed">
+              Clinically accurate dental content, ready to publish on{" "}
+              <span className="font-semibold text-slate-900">DentalKart.com</span>{" "}
+              — powered by AI, refined by you.
             </p>
           </div>
           <GenerateButton />
