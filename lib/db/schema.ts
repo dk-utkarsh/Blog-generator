@@ -32,3 +32,10 @@ export const researchSources = pgTable("research_sources", {
   rawData: jsonb("raw_data"),
   fetchedAt: timestamp("fetched_at", { withTimezone: true }).defaultNow(),
 });
+
+export const dentalkartAuth = pgTable("dentalkart_auth", {
+  id: serial("id").primaryKey(),
+  token: text("token").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});

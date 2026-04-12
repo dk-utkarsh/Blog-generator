@@ -2,6 +2,7 @@ import { db } from "@/lib/db/client";
 import { blogs } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import Link from "next/link";
+import GenerateButton from "./generate-button";
 
 export const dynamic = "force-dynamic";
 
@@ -19,15 +20,18 @@ export default async function HomePage() {
     })
     .from(blogs)
     .orderBy(desc(blogs.createdAt))
-    .limit(10);
+    .limit(20);
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Recent Blogs</h2>
-        <span className="text-sm text-gray-500">
-          {recentBlogs.length} blogs shown
-        </span>
+        <div>
+          <h2 className="text-lg font-semibold">Recent Blogs</h2>
+          <p className="text-sm text-gray-500">
+            {recentBlogs.length} blogs — review and publish to DentalKart
+          </p>
+        </div>
+        <GenerateButton />
       </div>
 
       {recentBlogs.length === 0 ? (

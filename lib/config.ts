@@ -9,7 +9,6 @@ export const DENTAL_CATEGORIES = [
   "Dentistry Tips",
   "Prosthodontics",
   "Orthodontics",
-  "3D Printing",
   "Periodontal",
   "Aesthetic Dentistry",
 ];

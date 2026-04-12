@@ -20,6 +20,8 @@ CRITICAL RULES:
 4. Every topic must be ENTIRELY UNIQUE in subject, clinical angle, and category
 5. Content must be EVERGREEN — useful year-round with no time-bound references
 6. ABSOLUTELY FORBIDDEN in title or content angle: "FY-end", "Tax", "March 31", "Financial Year", "Investment", "Deadline", "Budget Season", "Diwali", "Festival", "New Year", "Seasonal", "Quarter-end"
+7. NEVER write about cancer, oral cancer, cancer screening, tumors, malignancy, or any cancer-related topics in dentistry. This is a strict business rule — no exceptions.
+8. NEVER write about 3D printing, 3D printers, 3D printed trays, or any 3D printing related topics. DentalKart does not sell 3D printers.
 
 CONTEXT:
 - Blog number: #${input.nextBlogNumber}
@@ -62,8 +64,8 @@ REQUIREMENTS:
 
 OUTPUT (strict JSON, no markdown code blocks):
 {
-  "title": "SEO-friendly, clinically focused blog title",
-  "subtitle": "Meta description, 150-160 characters, keyword-rich",
+  "title": "Simple, clean blog title — like 'Dental 3D Printing Resin Guide' or 'Choosing the Right Autoclave'. AVOID wordy titles with colons, dashes, or phrases like 'Troubleshooting Guide', 'A Clinical Protocol', 'Comprehensive Review'. Keep it SHORT (5-8 words max), friendly, and product-focused.",
+  "subtitle": "Simple tagline like 'Selecting the Right Material' or 'Everything You Need to Know' (max 6 words)",
   "category": "One category from the list above",
   "contentType": "One content type from the list above",
   "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],

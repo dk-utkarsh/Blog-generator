@@ -46,14 +46,10 @@ Return ONE raw JSON object that exactly matches this structure (no extra keys, n
 {
   "hero": {
     "badge": "short badge label, e.g. 'Complete Guide ${input.currentYear}'",
-    "title": "Short main heading (MAX 6 WORDS, e.g. 'Dental Loupes Buying Guide')",
-    "subtitle": "Short second line (MAX 5 WORDS, e.g. 'Everything You Need to Know')",
-    "description": "~30 words summarising the blog value",
-    "stats": [
-      { "num": "e.g. 95%", "label": "e.g. Success Rate" },
-      { "num": "e.g. ₹800", "label": "e.g. Starting Price" },
-      { "num": "e.g. 10+", "label": "e.g. Products Reviewed" }
-    ]
+    "title": "Simple main heading (MAX 6 WORDS, e.g. 'Dental 3D Printing Resin Guide')",
+    "subtitle": "Simple tagline (MAX 5 WORDS, e.g. 'Selecting the Right Material')",
+    "description": "2-3 simple sentences (30-40 words) introducing the topic. Do NOT include the main keyword — it is already in the title. Just write a clean intro.",
+    "stats": []
   },
   "sections": [ /* exactly ${input.mainSections.length} section objects — see SECTION RULES */ ],
   "faq": [ /* 4-5 objects — see FAQ RULES */ ],
@@ -73,20 +69,22 @@ Each section object:
 {
   "id": "kebab-case-slug-matching-section-title",
   "title": "MAX 5 WORDS",
-  "content": "100-150 words of prose. Embed 1-2 <a href='EXACT_URL_FROM_APPROVED_LIST'>anchor text</a> links naturally. Include specific numbers (costs in ₹, percentages, measurements) in every section.",
-  "components": [ /* 0-2 component objects chosen from the 11 types below */ ]
+  "content": "Structure: 3-4 lines of intro text, then a bullet list (<ul><li>...</li></ul>) of 4-6 SHORT points (each point = 8-12 words max, NO bold headings inside bullets, just plain short sentences). Total ~150-180 words per section. Embed 1-2 <a href='EXACT_URL_FROM_APPROVED_LIST'>anchor text</a> links in the intro text.",
+  "components": [ /* 1-2 component objects chosen from the 12 types below — EVERY section MUST have at least 1 */ ]
 }
 
 - Produce exactly ${input.mainSections.length} sections, one for each assigned section topic.
 - Section titles must be MAX 5 words.
-- Distribute 4-6 component types across the entire blog (not every section needs a component).
+- EVERY section MUST have at least 1 component (diagram, infographic, table, cards, etc.). No section should be text-only.
+- Use "infographic" type in at least 2-3 sections for visual SVG diagrams.
 - 8-10 total <a> product links across all section content fields combined.
 
 ===============================================================================
-COMPONENT CATALOGUE — ALL 11 TYPES
+COMPONENT CATALOGUE — ALL 12 TYPES
 ===============================================================================
 
-Pick 4-6 types total across the blog. Use each type's exact "type" string.
+IMPORTANT: EVERY section MUST have at least 1 component. Use a variety of visual types across the blog. The "infographic" type is PREFERRED — use it in at least 2-3 sections.
+Pick 5-7 types total across the blog. Use each type's exact "type" string.
 
 1. info-cards
 {
@@ -124,33 +122,7 @@ Pick 4-6 types total across the blog. Use each type's exact "type" string.
 }
 Note: each cell can be either a plain string OR an object { "text": "label", "badge": "best" | "value" | "premium" }.
 
-4. product-cards
-{
-  "type": "product-cards",
-  "products": [
-    {
-      "tag": "Best Seller",
-      "tagColor": "bestseller",
-      "name": "Product Name",
-      "brand": "Brand Name",
-      "mrp": "₹1,200",
-      "price": "₹950",
-      "discount": "20% off",
-      "rating": 4.5,
-      "ratingText": "4.5/5",
-      "features": ["feature 1", "feature 2", "feature 3"],
-      "specs": [
-        { "label": "Size", "value": "10 ml" }
-      ],
-      "bestFor": "short use-case",
-      "url": "EXACT_URL_FROM_APPROVED_LIST"
-    }
-  ]
-}
-Note: tagColor must be one of: "bestseller" | "premium" | "budget" | "editors" | "advanced".
-Note: specs is optional. url must be an exact URL from the approved list above.
-
-5. checklist
+4. checklist
 {
   "type": "checklist",
   "title": "Checklist Title",
@@ -159,7 +131,7 @@ Note: specs is optional. url must be an exact URL from the approved list above.
   ]
 }
 
-6. decision-matrix
+5. decision-matrix
 {
   "type": "decision-matrix",
   "title": "Decision Matrix Title",
@@ -168,21 +140,21 @@ Note: specs is optional. url must be an exact URL from the approved list above.
   ]
 }
 
-7. tip-box
+6. tip-box
 {
   "type": "tip-box",
   "title": "Tip Title",
   "content": "Tip body — practical advice with a specific number or measurement."
 }
 
-8. warning-box
+7. warning-box
 {
   "type": "warning-box",
   "title": "Warning Title",
   "content": "Warning body — what to avoid and why, with a specific consequence."
 }
 
-9. timeline
+8. timeline
 {
   "type": "timeline",
   "items": [
@@ -190,7 +162,7 @@ Note: specs is optional. url must be an exact URL from the approved list above.
   ]
 }
 
-10. step-cards
+9. step-cards
 {
   "type": "step-cards",
   "cards": [
@@ -198,7 +170,7 @@ Note: specs is optional. url must be an exact URL from the approved list above.
   ]
 }
 
-11. feature-bars
+10. feature-bars
 {
   "type": "feature-bars",
   "title": "Feature Bars Title",
@@ -208,38 +180,70 @@ Note: specs is optional. url must be an exact URL from the approved list above.
 }
 Note: "value" is an integer 1-10. "color" is a hex color string.
 
+11. infographic (PREFERRED — renders as SVG diagram with colored cards and arrows)
+{
+  "type": "infographic",
+  "title": "Diagram Title (e.g. 'Key Benefits of X' or 'How X Works')",
+  "items": [
+    { "icon": "single emoji", "title": "short bold label (2-3 words)", "description": "Complete sentence, 10-15 words max. Must end properly — no cut-off sentences." }
+  ]
+}
+Note: Use 3-5 items. This renders as a professional SVG infographic with colored bordered boxes, arrows between them, and a gradient background. Great for showing processes, benefits, comparisons, or breakdowns. Use this type frequently.
+
+DO NOT use "product-cards" type — product data must come from real DentalKart listings, not AI-generated.
+
 ===============================================================================
 FAQ RULES
 ===============================================================================
 
 Produce 4-5 FAQ objects:
-{ "question": "full question string?", "answer": "30-40 word answer with at least one specific number." }
+{ "question": "full question string?", "answer": "50-70 word answer with at least one specific number." }
 
 ===============================================================================
 WRITING RULES
 ===============================================================================
 
-WORD LIMIT: 900-1200 words of text content total (hero description + all section content + faq answers combined).
+WORD LIMIT: 800-1200 words total (hero description + all section content + faq answers). HARD MINIMUM is 800 words — do not write less. Each section should be 180-220 words (3-4 lines intro + 5-6 bullet points).
 
-TONE: Simple and professional. A BDS student should understand everything. No jargon without explanation.
+TONE: Simple, clean, and professional — like a friendly guide, NOT a clinical textbook. A BDS student should understand everything. No jargon without explanation. Keep sentences short. Avoid heavy academic language. Write like you're explaining to a colleague over coffee.
 
-SEO: Use the keyword "${input.searchKeyword}" naturally 4-6 times across hero description, section content, and FAQ answers.
+CONTENT FORMAT: Every section must follow this pattern:
+1. Start with 3-4 lines of simple introductory text (no walls of text)
+2. Then use an HTML bullet list (<ul><li>...</li></ul>) with 4-6 concise bullet points
+3. Keep it scannable and easy to read — readers should grasp the key points quickly
 
-NUMBERS: Every section content must include at least one specific number — price in ₹, percentage, measurement, or duration.
+SEO KEYWORD LINKING (STRICT RULES):
 
-LINKS: Embed 8-10 <a href="EXACT_URL"> tags across section content. Use approved URLs only. Repeat a URL if genuinely relevant in multiple sections.
+RULE 1 — MAIN KEYWORD BAN: The main keyword "${input.searchKeyword}" is in the title. It is STRICTLY BANNED from appearing ANYWHERE else in the entire blog — not in hero description, not in section paragraphs, not in bullet points, not in FAQ answers, not in component text. ZERO occurrences. Also ban any rephrased version of it (e.g. if main keyword is "dental suction unit" then "dental suction units", "suction units", "suction unit" are ALL banned). This is non-negotiable.
 
-PRODUCT CARDS URLs: Must be an exact URL from the approved list.
+RULE 2 — HERO: The hero description should be a simple 2-3 sentence intro about the topic. Do NOT include the main keyword as a link or text in the hero description. The title already has it.
+
+RULE 3 — SUB-KEYWORDS IN PARAGRAPHS: In sections, ONLY add keyword links if there is a genuinely relevant related product from the APPROVED PRODUCT LINKS list. If no suitable keyword fits naturally, DO NOT force one. It is better to have zero keyword links in a section than to add irrelevant ones.
+
+RULE 4 — PRIORITY (when suitable keywords exist):
+  * HIGH: Products directly used with the main topic
+  * MEDIUM: Products in the same clinical workflow
+  * LOW: Products in the broader category
+
+RULE 5 — FORMAT: Wrap as <a href="EXACT_URL_FROM_APPROVED_LIST" class="keyword-highlight">short keyword</a>. Keywords must be 2-3 words max. ONLY use URLs from the approved list.
+
+RULE 6 — NO DUPLICATE HIGHLIGHTS: Each sub-keyword can be highlighted ONLY ONCE in the entire blog. If "rotary files" is linked in section 1, it must appear as plain text (no link) in all other sections. Never highlight the same keyword twice.
+
+NUMBERS: Use percentages, measurements, or durations in sections. Do NOT mention prices (₹) or cost ranges — DentalKart handles pricing.
+
+LINKS: ALL links in the blog (keyword-highlight and regular) must use EXACT URLs from the approved list above. Never invent or guess a dentalkart.com URL.
 
 SECTION TITLES: MAX 5 words each.
 
 FAQ COUNT: 4-5 items.
 
-COMPONENT COUNT: Pick 4-6 distinct component types total across the blog.
+COMPONENT COUNT: Pick 4-6 distinct component types total (from the 11 types — NO product-cards). EVERY section must have at least 1 component. Use "infographic" in 2-3 sections.
 
 ===============================================================================
 FINAL INSTRUCTION
 ===============================================================================
+
+REMEMBER: Bullet points must be SHORT (8-12 words each, no bold headings, no sub-explanations). Blog must be 800-1200 words — not less than 800.
 
 Output ONLY the raw JSON object. Do not wrap it in markdown code fences. Do not add any text before or after the JSON.`;
 }
