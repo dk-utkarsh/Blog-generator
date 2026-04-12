@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 import DentalkartLogo from "./dentalkart-logo";
+import Background from "./background";
 
 export const metadata: Metadata = {
   title: "DentalKart Blog Generator",
@@ -15,11 +16,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="bg-slate-50 text-slate-900 min-h-screen antialiased">
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-50 backdrop-blur-sm bg-white/90">
-          <div className="max-w-6xl mx-auto px-6 py-3.5 flex items-center justify-between">
+      <body className="text-slate-900 min-h-screen antialiased relative">
+        <Background />
+        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/70 sticky top-0 z-50">
+          <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3 group">
-              <DentalkartLogo size={32} />
+              <DentalkartLogo size={44} />
               <div className="hidden sm:block pl-3 border-l border-slate-200">
                 <div className="text-sm font-semibold text-slate-900">
                   Blog Generator
@@ -41,7 +43,7 @@ export default function RootLayout({
             </nav>
           </div>
         </header>
-        <main className="max-w-6xl mx-auto p-6">{children}</main>
+        <main className="max-w-6xl mx-auto p-6 relative">{children}</main>
       </body>
     </html>
   );
