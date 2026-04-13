@@ -1914,13 +1914,7 @@ export function renderBlogHTML(blog: BlogJSON, metaDescription: string, searchKe
   // Script for external links + FAQ toggle
   const scriptHtml = `
   <script>
-    // Fix keyword-highlight links: use the keyword text as search query
-    document.querySelectorAll('a.keyword-highlight').forEach(function(link) {
-      var keyword = link.textContent.trim();
-      if (keyword) {
-        link.setAttribute('href', 'https://www.dentalkart.com/search?query=' + encodeURIComponent(keyword));
-      }
-    });
+    // Keyword links keep whatever URL was set in the editor — no rewriting
 
     // Open external links in new tab (skip anchor links)
     document.querySelectorAll('a[href]').forEach(function(link) {
