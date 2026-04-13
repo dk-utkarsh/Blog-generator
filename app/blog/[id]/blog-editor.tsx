@@ -156,10 +156,18 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
             toolbar.style.top = (rect.top + window.scrollY - 44) + 'px';
             toolbar.style.left = Math.max(10, rect.left + rect.width/2 - 80) + 'px';
 
-            // check if on keyword
-            var node = sel.anchorNode;
-            var parent = node && node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-            var kw = parent && parent.closest ? parent.closest('a.keyword-highlight') : null;
+            // check if selection touches a keyword link (anchor, focus, or common ancestor)
+            function findKeyword(node) {
+              if (!node) return null;
+              var el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+              return el && el.closest ? el.closest('a.keyword-highlight') : null;
+            }
+            var kw =
+              findKeyword(sel.anchorNode) ||
+              findKeyword(sel.focusNode) ||
+              findKeyword(range.commonAncestorContainer) ||
+              findKeyword(range.startContainer) ||
+              findKeyword(range.endContainer);
 
             if (kw) {
               activeKw = kw;
