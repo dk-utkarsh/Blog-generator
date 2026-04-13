@@ -1907,7 +1907,7 @@ export function renderBlogHTML(blog: BlogJSON, metaDescription: string, searchKe
         <span class="footer-brand"><span class="footer-brand-dk">Dentalkart</span><span class="footer-brand-com">.com</span></span>
       </a>
       <p>India's Most Trusted Online Dental Store</p>
-      <p>Email: <a href="mailto:care@dentalkart.com">care@dentalkart.com</a> | Phone: <a href="tel:+918588834835">+91-8588834835</a></p>
+      <p>Email: <a href="mailto:support@dentalkart.com">support@dentalkart.com</a> | Phone: <a href="tel:+917289999456">+91-7289999456</a></p>
       <p><a href="https://www.dentalkart.com">www.dentalkart.com</a></p>
     </div>`;
 
