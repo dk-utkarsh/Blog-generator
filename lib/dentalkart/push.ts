@@ -1,6 +1,6 @@
-import sharp from "sharp";
 import { getDentalkartToken } from "./auth";
 import { buildFeaturedImageSvg } from "./featured-image";
+import { rasterizeFeaturedImage } from "./rasterize";
 
 const DENTALKART_URL = process.env.DENTALKART_BLOG_URL || "https://www.dentalkart.com/blogs";
 
@@ -137,12 +137,8 @@ async function generateAndUploadFeaturedImage(
   input: { title: string; subtitle?: string; category?: string }
 ): Promise<string | null> {
   // Generate SVG and rasterize to PNG at 2x for retina sharpness.
-  // density:144 renders the 1200x630 SVG at 2400x1260 natively (no upscale).
   const svg = buildFeaturedImageSvg(input);
-  const pngBuffer = await sharp(Buffer.from(svg), { density: 144 })
-    .resize(2400, 1260, { fit: "fill" })
-    .png({ compressionLevel: 9, palette: false })
-    .toBuffer();
+  const pngBuffer = rasterizeFeaturedImage(svg);
 
   const filename = `featured-${Date.now()}.png`;
 

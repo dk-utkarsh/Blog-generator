@@ -3,7 +3,7 @@ import { db } from "@/lib/db/client";
 import { blogs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { buildFeaturedImageSvg } from "@/lib/dentalkart/featured-image";
-import sharp from "sharp";
+import { rasterizeFeaturedImage } from "@/lib/dentalkart/rasterize";
 
 export async function GET(
   request: NextRequest,
@@ -39,10 +39,7 @@ export async function GET(
   // Return PNG if ?format=png — render at 2x retina for crisp display.
   const format = request.nextUrl.searchParams.get("format");
   if (format === "png") {
-    const pngBuffer = await sharp(Buffer.from(svg), { density: 144 })
-      .resize(2400, 1260, { fit: "fill" })
-      .png({ compressionLevel: 9, palette: false })
-      .toBuffer();
+    const pngBuffer = rasterizeFeaturedImage(svg);
 
     return new NextResponse(new Uint8Array(pngBuffer), {
       headers: {
