@@ -40,21 +40,23 @@ export async function pushBlogToDentalkart(
     // Extract just the inner content (body) with styles for the editor
     const editorContent = extractEditorContent(input.content);
 
-    // Use provided featured image URL (hosted on our app) or try uploading
-    let featuredImageUrl: string | null = input.featuredImageUrl || null;
-    if (!featuredImageUrl) {
-      try {
-        featuredImageUrl = await generateAndUploadFeaturedImage(token, {
-          title: input.title,
-          subtitle: input.excerpt,
-          category: input.categoryName,
-        });
+    // Try uploading to DentalKart media first; fall back to caller-provided URL
+    let featuredImageUrl: string | null = null;
+    try {
+      featuredImageUrl = await generateAndUploadFeaturedImage(token, {
+        title: input.title,
+        subtitle: input.excerpt,
+        category: input.categoryName,
+      });
+      if (featuredImageUrl) {
         console.log("[Push] Featured image uploaded:", featuredImageUrl);
-      } catch (err) {
-        console.warn("[Push] Featured image upload failed:", err);
       }
-    } else {
-      console.log("[Push] Using hosted featured image:", featuredImageUrl);
+    } catch (err) {
+      console.warn("[Push] Featured image upload failed:", err);
+    }
+    if (!featuredImageUrl && input.featuredImageUrl) {
+      featuredImageUrl = input.featuredImageUrl;
+      console.log("[Push] Falling back to hosted featured image:", featuredImageUrl);
     }
 
     const response = await fetch(`${DENTALKART_URL}/api/posts`, {
@@ -119,15 +121,27 @@ function extractEditorContent(fullHtml: string): string {
   return `${styles.join("\n")}\n${body}`.trim();
 }
 
+// DentalKart media uploads return URLs on the legacy `blogs.dentalkart.com`
+// host, which 301-redirects to `www.dentalkart.com/blogs/...`. Rewrite to the
+// canonical host so consumers don't pay the redirect.
+function normalizeMediaUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return url.replace(
+    /^https?:\/\/blogs\.dentalkart\.com\/wp-content\//i,
+    "https://www.dentalkart.com/blogs/wp-content/"
+  );
+}
+
 async function generateAndUploadFeaturedImage(
   token: string,
   input: { title: string; subtitle?: string; category?: string }
 ): Promise<string | null> {
-  // Generate SVG and rasterize to PNG at full size
+  // Generate SVG and rasterize to PNG at 2x for retina sharpness.
+  // density:144 renders the 1200x630 SVG at 2400x1260 natively (no upscale).
   const svg = buildFeaturedImageSvg(input);
-  const pngBuffer = await sharp(Buffer.from(svg))
-    .resize(1200, 630)
-    .png()
+  const pngBuffer = await sharp(Buffer.from(svg), { density: 144 })
+    .resize(2400, 1260, { fit: "fill" })
+    .png({ compressionLevel: 9, palette: false })
     .toBuffer();
 
   const filename = `featured-${Date.now()}.png`;
@@ -152,7 +166,7 @@ async function generateAndUploadFeaturedImage(
       if (response.ok) {
         const data = await response.json();
         console.log(`[Push] Media upload success (field: ${field}):`, JSON.stringify(data));
-        return data.url || data.imageUrl || data.filePath || data.src || null;
+        return normalizeMediaUrl(data.url || data.imageUrl || data.filePath || data.src);
       }
 
       const text = await response.text();
@@ -181,7 +195,7 @@ async function generateAndUploadFeaturedImage(
     if (response.ok) {
       const data = await response.json();
       console.log("[Push] Media upload success (base64):", JSON.stringify(data));
-      return data.url || data.imageUrl || data.filePath || data.src || null;
+      return normalizeMediaUrl(data.url || data.imageUrl || data.filePath || data.src);
     }
     const text = await response.text();
     console.log(`[Push] Media upload failed (base64): ${response.status} ${text}`);

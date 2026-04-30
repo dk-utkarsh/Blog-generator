@@ -36,12 +36,12 @@ export async function GET(
     category: blog.category || undefined,
   });
 
-  // Return PNG if ?format=png
+  // Return PNG if ?format=png — render at 2x retina for crisp display.
   const format = request.nextUrl.searchParams.get("format");
   if (format === "png") {
-    const pngBuffer = await sharp(Buffer.from(svg))
-      .resize(1200, 630)
-      .png()
+    const pngBuffer = await sharp(Buffer.from(svg), { density: 144 })
+      .resize(2400, 1260, { fit: "fill" })
+      .png({ compressionLevel: 9, palette: false })
       .toBuffer();
 
     return new NextResponse(new Uint8Array(pngBuffer), {
