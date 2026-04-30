@@ -28,11 +28,16 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
 
   const getLinkText = (el: Element) => (el.textContent || "").trim();
 
+  // Any <a href> that isn't a fragment anchor counts as a keyword link —
+  // older blogs use plain <a> without the keyword-highlight class, so we
+  // include both.
+  const KEYWORD_SELECTOR = 'a[href]:not([href^="#"])';
+
   const scanKeywords = useCallback(() => {
     const d = getDoc();
     if (!d) return;
     const kws: KeywordLink[] = [];
-    d.querySelectorAll("a.keyword-highlight").forEach((el, i) => {
+    d.querySelectorAll(KEYWORD_SELECTOR).forEach((el, i) => {
       const text = getLinkText(el);
       if (text) kws.push({ text, url: (el as HTMLAnchorElement).href, index: i });
     });
@@ -126,10 +131,52 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
           notify('changed');
         });
 
-        // prevent link navigation in edit mode
+        // Treat any external <a href> (not a #fragment) as a keyword link —
+        // older blogs were generated without the keyword-highlight class.
+        var KW_SELECTOR = 'a[href]:not([href^="#"])';
+
+        function findKeyword(node) {
+          if (!node) return null;
+          var el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+          if (!el || !el.closest) return null;
+          return el.closest(KW_SELECTOR);
+        }
+
+        // Detect a keyword link that overlaps the selection range — covers
+        // the case where user selects text that contains/straddles the keyword
+        // (start/end nodes sit outside the <a>).
+        function findKeywordInRange(range) {
+          if (!range) return null;
+          var ancestor = range.commonAncestorContainer;
+          if (ancestor.nodeType === Node.TEXT_NODE) ancestor = ancestor.parentElement;
+          if (!ancestor || !ancestor.querySelectorAll) return null;
+          var links = ancestor.querySelectorAll(KW_SELECTOR);
+          for (var i = 0; i < links.length; i++) {
+            try {
+              if (range.intersectsNode(links[i])) return links[i];
+            } catch (_) { /* ignore */ }
+          }
+          return null;
+        }
+
+        function showUnlinkToolbarFor(kw) {
+          activeKw = kw;
+          savedRange = null;
+          var rect = kw.getBoundingClientRect();
+          toolbar.style.top = (rect.top + window.scrollY - 44) + 'px';
+          toolbar.style.left = Math.max(10, rect.left + rect.width/2 - 80) + 'px';
+          toolbar.innerHTML = '<span class="label">Keyword linked</span><button class="danger" id="ed-unlink">Unlink</button>';
+          toolbar.className = 'show';
+        }
+
+        // prevent link navigation in edit mode + open Unlink toolbar on keyword click
         document.addEventListener('click', function(e) {
           var a = e.target.closest ? e.target.closest('a') : null;
-          if (a) e.preventDefault();
+          if (!a) return;
+          var href = a.getAttribute('href') || '';
+          if (href.charAt(0) === '#') return; // TOC link — let it scroll
+          e.preventDefault();
+          showUnlinkToolbarFor(a);
         });
 
         // mouseup → show toolbar
@@ -139,13 +186,27 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
 
           setTimeout(function() {
             var sel = window.getSelection();
-            if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+            if (!sel || sel.rangeCount === 0) {
               toolbar.className = '';
               toolbar.innerHTML = '';
               savedRange = null;
               activeKw = null;
               return;
             }
+
+            // collapsed selection: only keep toolbar if click landed on a keyword
+            if (sel.isCollapsed) {
+              var kwHere = findKeyword(sel.anchorNode);
+              if (!kwHere) {
+                toolbar.className = '';
+                toolbar.innerHTML = '';
+                savedRange = null;
+                activeKw = null;
+              }
+              // else: click handler already opened the unlink toolbar
+              return;
+            }
+
             var range = sel.getRangeAt(0);
             var rect = range.getBoundingClientRect();
             if (rect.width === 0) { toolbar.className = ''; return; }
@@ -157,17 +218,13 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
             toolbar.style.left = Math.max(10, rect.left + rect.width/2 - 80) + 'px';
 
             // check if selection touches a keyword link (anchor, focus, or common ancestor)
-            function findKeyword(node) {
-              if (!node) return null;
-              var el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-              return el && el.closest ? el.closest('a.keyword-highlight') : null;
-            }
             var kw =
               findKeyword(sel.anchorNode) ||
               findKeyword(sel.focusNode) ||
               findKeyword(range.commonAncestorContainer) ||
               findKeyword(range.startContainer) ||
-              findKeyword(range.endContainer);
+              findKeyword(range.endContainer) ||
+              findKeywordInRange(range);
 
             if (kw) {
               activeKw = kw;
@@ -175,6 +232,25 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
             } else {
               activeKw = null;
               toolbar.innerHTML = '<button class="primary" id="ed-link">+ Add Keyword Link</button>';
+              // Diagnostic — surface what we examined so we can see why detection missed.
+              function describe(node) {
+                if (!node) return null;
+                var el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+                if (!el) return { type: node.nodeType, text: (node.textContent || '').slice(0, 40) };
+                return {
+                  tag: el.tagName,
+                  className: el.className,
+                  outer: (el.outerHTML || '').slice(0, 200),
+                };
+              }
+              notify('kw-debug', {
+                anchor: describe(sel.anchorNode),
+                focus: describe(sel.focusNode),
+                start: describe(range.startContainer),
+                end: describe(range.endContainer),
+                commonAncestor: describe(range.commonAncestorContainer),
+                selectedText: sel.toString().slice(0, 80),
+              });
             }
             toolbar.className = 'show';
           }, 10);
@@ -228,9 +304,21 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
 
           // "Unlink" → remove keyword link
           if (target.id === 'ed-unlink') {
-            if (activeKw && activeKw.parentNode) {
-              var txt = document.createTextNode(activeKw.textContent || '');
-              activeKw.parentNode.replaceChild(txt, activeKw);
+            var kw = activeKw;
+            if (!kw || !kw.parentNode) {
+              // fallback: re-derive from the live selection
+              var sel = window.getSelection();
+              if (sel && sel.rangeCount > 0) {
+                var r = sel.getRangeAt(0);
+                kw = findKeyword(sel.anchorNode) ||
+                     findKeyword(sel.focusNode) ||
+                     findKeyword(r.commonAncestorContainer) ||
+                     findKeywordInRange(r);
+              }
+            }
+            if (kw && kw.parentNode) {
+              var txt = document.createTextNode(kw.textContent || '');
+              kw.parentNode.replaceChild(txt, kw);
               activeKw = null;
               toolbar.className = '';
               toolbar.innerHTML = '';
@@ -299,6 +387,10 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
         setReady(true);
         scanKeywords();
       }
+      if (e.data.type === "kw-debug") {
+        // eslint-disable-next-line no-console
+        console.log("[editor] kw-debug — selection had no keyword:", e.data.data);
+      }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
@@ -323,7 +415,7 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
   const removeKeyword = useCallback((index: number) => {
     const d = getDoc();
     if (!d) return;
-    const link = d.querySelectorAll("a.keyword-highlight")[index];
+    const link = d.querySelectorAll(KEYWORD_SELECTOR)[index];
     if (!link?.parentNode) return;
     link.parentNode.replaceChild(d.createTextNode(getLinkText(link)), link);
     setHasChanges(true);
@@ -334,7 +426,7 @@ export default function BlogEditor({ blogId, htmlContent, onSave }: BlogEditorPr
   const scrollToKeyword = useCallback((index: number) => {
     const d = getDoc();
     if (!d) return;
-    const el = d.querySelectorAll("a.keyword-highlight")[index] as HTMLElement;
+    const el = d.querySelectorAll(KEYWORD_SELECTOR)[index] as HTMLElement;
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
     el.style.outline = "3px solid #f59e0b";

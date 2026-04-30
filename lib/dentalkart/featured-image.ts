@@ -132,13 +132,13 @@ export function buildFeaturedImageSvg(input: FeaturedImageInput): string {
   ` : ""}
 
   <!-- DentalKart brand -->
-  <text x="80" y="560" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">
+  <text x="80" y="520" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="800">
     <tspan fill="#5B86B8">Dentalkart</tspan><tspan fill="#E8862A">.com</tspan>
   </text>
-  <text x="80" y="590" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#ffffff" opacity="0.7">India's Most Trusted Online Dental Store</text>
+  <text x="80" y="558" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="400" fill="#ffffff" opacity="0.85">India's Most Trusted Online Dental Store</text>
 
   <!-- Decorative lines -->
-  <rect x="1040" y="540" width="80" height="4" rx="2" fill="${theme.light}"/>
+  <rect x="1040" y="510" width="80" height="4" rx="2" fill="${theme.light}"/>
   <rect x="80" y="150" width="60" height="4" rx="2" fill="${theme.light}"/>
 </svg>`;
 }

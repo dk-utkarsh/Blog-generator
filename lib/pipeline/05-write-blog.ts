@@ -28,19 +28,31 @@ export async function writeBlog(
     currentYear: new Date().getFullYear(),
   });
 
-  const { text } = await generateText({
-    model: google(GEMINI_TEXT_MODEL),
-    prompt,
-    maxOutputTokens: 8192,
-  });
+  // Run with a generous output budget; Gemini 2.5 Pro supports up to 65k.
+  // Truncated responses are the #1 cause of "Unterminated string" parse fails.
+  const generate = (max: number) =>
+    generateText({
+      model: google(GEMINI_TEXT_MODEL),
+      prompt,
+      maxOutputTokens: max,
+      providerOptions: { google: { structuredOutputs: true } },
+    });
 
-  // Parse JSON — strip markdown fences if LLM adds them despite instructions
-  const cleanJson = text
-    .replace(/```json\n?/g, "")
-    .replace(/```\n?/g, "")
-    .trim();
+  let text = (await generate(32768)).text;
 
-  const blogJson: BlogJSON = JSON.parse(cleanJson);
+  const stripFences = (s: string) =>
+    s.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+
+  let blogJson: BlogJSON;
+  try {
+    blogJson = JSON.parse(stripFences(text));
+  } catch (err) {
+    console.warn(
+      `[Step 3] JSON parse failed (${(err as Error).message}); raw length=${text.length}, retrying with larger budget`
+    );
+    text = (await generate(65536)).text;
+    blogJson = JSON.parse(stripFences(text));
+  }
 
   // Strip main keyword from entire blog (AI sometimes ignores the ban)
   // Remove keyword-highlight links containing the main keyword

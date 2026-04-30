@@ -38,6 +38,28 @@ export default function BlogDetailClient({
     setEditedBodyHtml(html);
   }, []);
 
+  const [deleting, setDeleting] = useState(false);
+  const handleDelete = useCallback(async () => {
+    const ok = window.confirm(
+      `Delete this blog?\n\n"${title}"\n\nThis cannot be undone.`
+    );
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/blog/${blogId}/delete`, { method: "POST" });
+      const data = await res.json();
+      if (!data.success) {
+        window.alert(`Delete failed: ${data.error || "unknown error"}`);
+        setDeleting(false);
+        return;
+      }
+      window.location.href = "/";
+    } catch (err) {
+      window.alert(`Delete failed: ${err instanceof Error ? err.message : "network error"}`);
+      setDeleting(false);
+    }
+  }, [blogId, title]);
+
   // Rebuild full HTML with edited body — used for copy, publish, editor
   const currentHtmlContent = useMemo(() => {
     if (!editedBodyHtml) return htmlContent;
@@ -190,6 +212,20 @@ export default function BlogDetailClient({
             Changes saved — preview and publish use the updated version
           </span>
         )}
+        <div className="ml-auto">
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
+              deleting
+                ? "border-gray-200 text-gray-400 cursor-not-allowed"
+                : "border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+            }`}
+            title="Permanently delete this blog"
+          >
+            {deleting ? "Deleting…" : "Delete blog"}
+          </button>
+        </div>
       </div>
 
       {mode === "edit" ? (
