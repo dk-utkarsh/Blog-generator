@@ -58,7 +58,7 @@ export async function POST(
     postId: pushResult.postId,
     slug: pushResult.slug,
     status,
-    publicUrl: `${process.env.DENTALKART_BLOG_URL?.replace('/blogs', '')}/blogs/blog/${pushResult.slug}`,
+    publicUrl: `${process.env.DENTALKART_BLOG_URL?.replace('/blogs', '')}/blogs/${pushResult.slug}`,
     adminUrl: `${process.env.DENTALKART_BLOG_URL}/admin/posts/${pushResult.postId}`,
   });
 }
